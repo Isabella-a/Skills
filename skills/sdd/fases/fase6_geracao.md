@@ -1,4 +1,4 @@
-# Fase 4 — Geração da Pasta SDD
+# Fase 6 — Geração da Pasta SDD
 
 Crie a estrutura de pastas e arquivos em `.specs/sdd-<feature-slug>/`.
 
@@ -29,17 +29,17 @@ pasta gerada aqui já nasce no lugar certo, sem passo de migração manual depoi
 
 Leia `templates/descricao_alto_nivel.md` e preencha com:
 - Objetivo e comportamento esperado da feature completa (o QUÊ, não o COMO)
-- Contratos/schemas reais da Fase 1 (DTOs, entidades, colunas de migration, resposta de API)
+- Contratos/schemas reais da Fase 3 (DTOs, entidades, colunas de migration, resposta de API)
 - Arquitetura da feature nas camadas que `PROJECT_MAP.md` declara
-- Dependências e reutilização de helpers/hooks/componentes existentes (da Fase 2)
+- Dependências e reutilização de helpers/hooks/componentes existentes (da Fase 4)
 - Open Questions ainda abertas
-- Campo **Ticket**: preencha com a chave (`ABC-1234`) se a Fase -1 buscou um ticket; remova a
+- Campo **Ticket**: preencha com a chave (`ABC-1234`) se a Fase 1 buscou um ticket; remova a
   linha do template se a feature veio só de descrição livre
 
 ### `implementacao.md`
 
 Leia `templates/implementacao.md` e preencha com:
-- Tabela de specs na ordem de implementação validada na Fase 3
+- Tabela de specs na ordem de implementação validada na Fase 5
 - Grafo de dependências entre specs
 - Critério de conclusão da feature completa
 
@@ -51,7 +51,7 @@ Leia `templates/progresso.md` e preencha com:
 
 ### `specs/NN-nome.md` (uma por spec)
 
-Para cada spec validada na Fase 3:
+Para cada spec validada na Fase 5:
 
 1. Leia `templates/spec.md`
 2. Leia `regras/qualidade.md` — aplique todas as regras antes de escrever

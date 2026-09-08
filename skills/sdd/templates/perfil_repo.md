@@ -1,6 +1,6 @@
 # Perfil do repositório — SDD (unidade de entrega)
 
-> Gerado pela Fase -2 da skill `sdd` em <data>. Complementa `PROJECT_MAP.md` (stack, arquitetura,
+> Gerado pela Fase 0 da skill `sdd` em <data>. Complementa `PROJECT_MAP.md` (stack, arquitetura,
 > estilos, testes, ambiente local, CI/CD, segurança, convenções, integrações externas e fluxo de
 > trabalho — gerado pela skill `project-map`) com o que é específico de spec: o que conta como
 > "uma spec" neste repositório. Versione este arquivo. Para refazer: rode a skill com `--setup`

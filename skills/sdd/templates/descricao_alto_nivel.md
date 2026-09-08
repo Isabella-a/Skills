@@ -33,7 +33,7 @@ Use fluxo narrativo: "Quando X, o sistema Y, resultando em Z."]
 
 ## Contratos e Schemas
 
-> Preencha com o resultado real da Fase 1. Nada aqui pode ser inventado: cada shape vem com o
+> Preencha com o resultado real da Fase 3. Nada aqui pode ser inventado: cada shape vem com o
 > caminho do arquivo onde ele foi lido.
 
 ### Fonte: <entidade persistida / contrato de I/O / serviço externo / schema de entrada>
@@ -93,12 +93,12 @@ campoC: <tipo> | null   // ex: 1234.56 — null quando <condição real>
 
 | Item | Caminho | Como usar |
 |------|---------|-----------|
-| <helper/módulo/componente levantado na Fase 2> | `<caminho>` | <uso> |
+| <helper/módulo/componente levantado na Fase 4> | `<caminho>` | <uso> |
 
 ### Novas dependências externas
 
 [Liste qualquer client novo, biblioteca nova ou serviço novo — e justifique por que o que já
-existe no repositório não cobre. Dependência nova sem justificativa é sinal de que a Fase 2 não
+existe no repositório não cobre. Dependência nova sem justificativa é sinal de que a Fase 4 não
 foi feita direito.]
 
 ---

@@ -1,6 +1,6 @@
-# Fase 2 — Investigação do Repositório
+# Fase 4 — Investigação do Repositório
 
-Lance **dois agentes Explore simultaneamente**. Aguarde ambos antes de prosseguir para a Fase 3.
+Lance **dois agentes Explore simultaneamente**. Aguarde ambos antes de prosseguir para a Fase 5.
 
 Antes de montar os prompts, releia `PROJECT_MAP.md`: os caminhos, camadas e padrões que ele
 declara é que dizem **onde** os agentes devem olhar. Substitua os `<...>` abaixo por valores
@@ -67,7 +67,7 @@ Agent(
 
 ## Consolidação
 
-Ao receber os dois relatórios, registre para a Fase 3:
+Ao receber os dois relatórios, registre para a Fase 5:
 
 - **O que reusar** (com caminho) — cada item aqui é uma spec que não precisa existir.
 - **O padrão a seguir** por tipo de artefato, para a spec não propor uma arquitetura paralela.
