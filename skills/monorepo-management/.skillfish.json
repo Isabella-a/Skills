@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "monorepo-management",
+  "owner": "wshobson",
+  "repo": "agents",
+  "path": "plugins/developer-essentials/skills/monorepo-management",
+  "branch": "main",
+  "sha": "479cb611c4ef614bbe83d11f30f81bb123f0ffd4",
+  "source": "manual"
+}
