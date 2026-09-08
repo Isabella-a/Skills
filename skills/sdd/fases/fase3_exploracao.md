@@ -1,4 +1,4 @@
-# Fase 1 — Descoberta Exploratória de Contratos e Schemas
+# Fase 3 — Descoberta Exploratória de Contratos e Schemas
 
 Esta fase existe para que os dados de teste (fixtures/mocks de DTOs, entidades, respostas de
 API) reflitam a realidade do sistema. Sem ela, os payloads inventados nos testes divergem do
@@ -12,10 +12,10 @@ que quebraria em produção.
 Leia `exploracao_contratos.md` integralmente. Em seguida, lance **um agente
 Explore** com o conteúdo desse arquivo como prompt, substituindo:
 
-- `$FONTE` → a origem do contrato informada na Fase 0 (entidade/tabela existente, tipo/DTO já
+- `$FONTE` → a origem do contrato informada na Fase 2 (entidade/tabela existente, tipo/DTO já
   definido, contrato de serviço externo, schema a ser criado)
 - `$CONTEXTO` → os `$ARGUMENTS` originais do usuário + resumo das regras de negócio coletadas na
-  Fase 0
+  Fase 2
 
 ```
 Agent(
@@ -25,7 +25,7 @@ Agent(
 )
 ```
 
-Aguarde o relatório completo antes de prosseguir para a Fase 2.
+Aguarde o relatório completo antes de prosseguir para a Fase 4.
 
 ---
 

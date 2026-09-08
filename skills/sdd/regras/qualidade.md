@@ -28,16 +28,16 @@ transação, tipagem, níveis de teste obrigatórios) sai de `PROJECT_MAP.md` e 
 
 | Anti-padrão | Correção |
 |-------------|----------|
-| Contrato, entidade ou schema inventado sem exploração | Execute a Fase 1 e documente o shape real, com o caminho do arquivo onde ele está |
+| Contrato, entidade ou schema inventado sem exploração | Execute a Fase 3 e documente o shape real, com o caminho do arquivo onde ele está |
 | Fixture de teste com campos diferentes do contrato real | Nomes de campos idênticos ao contrato real — é o erro mais comum e o mais caro |
 | Casos de teste cobrindo apenas o caminho feliz | Cada unidade precisa de ao menos um caso de borda e um de falha |
 | Erro de negócio engolido por captura silenciosa | Siga o padrão de erro do repositório (`PROJECT_MAP.md § Convenções de código observadas`). Captura vazia, ou que só loga e segue, é proibida |
 | Efeito colateral no meio do fluxo transacional principal | Descreva o mecanismo que o repositório usa para isso (fila, evento, job) e mantenha fora da transação de escrita |
 | Operação que escreve em várias fontes sem declarar atomicidade | Declare explicitamente no contrato como a consistência é garantida |
 | Escape de tipagem proposto no contrato (`any`, ignore de type checker) | Proibido — proponha o tipo real, ou registre `⚠️ ABERTO:` |
-| Valor mágico onde o repositório tem constante/token/enum | Referencie o existente; a Fase 2 já levantou o que há |
+| Valor mágico onde o repositório tem constante/token/enum | Referencie o existente; a Fase 4 já levantou o que há |
 | Estado derivado descrito como efeito | Descreva como valor calculado a partir da entrada, não como efeito colateral |
-| Reimplementação de algo que já existe | Liste os helpers levantados na Fase 2 antes de propor código novo |
+| Reimplementação de algo que já existe | Liste os helpers levantados na Fase 4 antes de propor código novo |
 | Spec cobrindo mais de um eixo da entrega | Quebre: quem produz o contrato vem antes de quem consome |
 | Spec sem Open Questions havendo ambiguidade | Toda dúvida vira `⚠️ ABERTO:` + linha na tabela |
 

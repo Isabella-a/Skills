@@ -1,22 +1,22 @@
-# Fase 0 — Alinhamento de Negócio
+# Fase 2 — Alinhamento de Negócio
 
 Esta fase garante que você entende o objetivo real antes de explorar código. Não pule para
 exploração técnica sem clareza de negócio — uma spec construída sobre premissa errada é inútil.
 
 **Pré-requisitos:**
 
-- **Fase -2 concluída** — leia `PROJECT_MAP.md` (tipo de projeto, camadas, integrações externas
+- **Fase 0 concluída** — leia `PROJECT_MAP.md` (tipo de projeto, camadas, integrações externas
   recorrentes) e `.claude/sdd/perfil.md` (o que é uma unidade de entrega) antes de perguntar
   qualquer coisa. Sem isso você vai perguntar ao usuário o que o repositório já responde.
-- **Fase -1 concluída** — releia a sessão de grilling e mapeie o que ela já resolveu. Só pergunte
+- **Fase 1 concluída** — releia a sessão de grilling e mapeie o que ela já resolveu. Só pergunte
   o que ficou em aberto; se a entrevista cobriu tudo, apresente o resumo e peça confirmação (ver
-  `fase-1_ticket_grilling.md § -1.4`).
+  `fase1_ticket_grilling.md § 1.4`).
 
 ---
 
-## 0.1 — Perguntas obrigatórias (use `AskUserQuestion` só para o que ainda está em aberto)
+## 2.1 — Perguntas obrigatórias (use `AskUserQuestion` só para o que ainda está em aberto)
 
-Cheque cada item contra o que a Fase -1 já resolveu e o que `PROJECT_MAP.md`/`perfil.md` já
+Cheque cada item contra o que a Fase 1 já resolveu e o que `PROJECT_MAP.md`/`perfil.md` já
 declaram. Para o que sobrar, pergunte em uma única chamada com múltiplos campos:
 
 1. **Objetivo da feature:** o que ela entrega? Para quem (qual perfil de usuário, dos que
@@ -31,16 +31,16 @@ declaram. Para o que sobrar, pergunte em uma única chamada com múltiplos campo
    acesso.)
 5. **Não-objetivos:** o que esta feature explicitamente **não** vai fazer?
 6. **Integração externa:** depende de algum serviço externo? Se sim, qual e o que já se sabe do
-   contrato dele? Isso muda o que a Fase 1 precisa explorar (contrato externo, não só o interno)
+   contrato dele? Isso muda o que a Fase 3 precisa explorar (contrato externo, não só o interno)
    e alimenta o caso de borda "dependência externa indisponível". Comece pelas integrações que
    `PROJECT_MAP.md § Integrações externas recorrentes` lista.
 7. **Persistência/schema:** exige mudança de schema, migration ou nova fonte de dados? Use os
    mecanismos que `PROJECT_MAP.md § Frameworks e bibliotecas-chave` declara — não invente um novo.
 
-Não prossiga para 0.2 sem essas respostas.
+Não prossiga para 2.2 sem essas respostas.
 
-**Não pergunte aqui quais são as specs.** Nesta fase você ainda não viu o contrato real (Fase 1)
-nem os padrões do repositório (Fase 2), então qualquer lista agora é chute. A Fase 3 deriva a
+**Não pergunte aqui quais são as specs.** Nesta fase você ainda não viu o contrato real (Fase 3)
+nem os padrões do repositório (Fase 4), então qualquer lista agora é chute. A Fase 5 deriva a
 lista do que foi levantado e só a apresenta para confirmação.
 
 ### Testes — vem do `PROJECT_MAP.md`, não do usuário
@@ -62,7 +62,7 @@ repositório. Aplique de lá:
 Se `.claude/sdd/perfil.md` indicar que o projeto tem mais de um eixo por onde uma feature costuma
 passar (por exemplo contrato + consumo, serviço + job, API + tela), **assuma que a entrega passa
 por todos eles** em vez de perguntar "é só de um lado?" como escolha aberta. Informe essa suposição ao
-resumir as respostas de 0.1 e diga a ordem prevista (quem produz o contrato vem antes de quem
+resumir as respostas de 2.1 e diga a ordem prevista (quem produz o contrato vem antes de quem
 consome).
 
 Só reduza para um eixo com sinal explícito e concreto de que o outro não existe — por exemplo um
@@ -71,7 +71,7 @@ sem mudança de contrato. Nesse caso, confirme antes de reduzir o escopo; não a
 
 ---
 
-## 0.2 — Se for extensão de algo existente: análise da referência
+## 2.2 — Se for extensão de algo existente: análise da referência
 
 Quando a feature estende um módulo, tela ou job já implementado, você precisa entender as regras
 de negócio já aplicadas ali — elas determinam o que a nova spec pode assumir e o que ela ainda
@@ -125,5 +125,5 @@ precisa validar.
    )
    ```
 
-3. **Consolide os relatórios** antes de ir para a Fase 1. O que a referência garante determina o
+3. **Consolide os relatórios** antes de ir para a Fase 3. O que a referência garante determina o
    que a nova spec pode assumir — e o que ela precisa validar.

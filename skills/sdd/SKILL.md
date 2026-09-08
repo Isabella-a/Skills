@@ -31,13 +31,13 @@ antes de executar a fase. Os caminhos são relativos a este diretório de skill.
 
 | Fase | Arquivo | O que faz | Pré-requisito |
 |------|---------|-----------|---------------|
-| -2 | `fases/fase-2_setup.md` | **Só na primeira vez no repositório** (ou com `--setup`): garante `PROJECT_MAP.md` (delegando à skill `project-map` se faltar) e grava `.claude/sdd/perfil.md` com a unidade de entrega | — |
-| -1 | `fases/fase-1_ticket_grilling.md` | Busca o ticket (se houver referência) e roda uma sessão de grilling para afiar a ideia antes de qualquer pergunta estruturada | Fase -2 concluída |
-| 0 | `fases/fase0_alinhamento.md` | Coleta objetivo e regras de negócio; reaproveita o que a Fase -1 já resolveu e só pergunta o que ficou em aberto | Fase -1 concluída |
-| 1 | `fases/fase1_exploracao.md` | Explora o shape real de contratos, schemas e entidades envolvidos | Fase 0 concluída |
-| 2 | `fases/fase2_investigacao.md` | Investiga os padrões do repositório e módulos similares | Fase 0 concluída (paralela com a Fase 1) |
-| 3 | `fases/fase3_confirmacao.md` | Deriva a lista de specs (granularidade + reuso) e confirma o escopo técnico | Fases 1 e 2 concluídas |
-| 4 | `fases/fase4_geracao.md` | Gera a pasta `.specs/sdd-<slug>/` com todos os arquivos | Fase 3 concluída |
+| 0 | `fases/fase0_setup.md` | **Só na primeira vez no repositório** (ou com `--setup`): garante `PROJECT_MAP.md` (delegando à skill `project-map` se faltar) e grava `.claude/sdd/perfil.md` com a unidade de entrega | — |
+| 1 | `fases/fase1_ticket_grilling.md` | Busca o ticket (se houver referência) e roda uma sessão de grilling para afiar a ideia antes de qualquer pergunta estruturada | Fase 0 concluída |
+| 2 | `fases/fase2_alinhamento.md` | Coleta objetivo e regras de negócio; reaproveita o que a Fase 1 já resolveu e só pergunta o que ficou em aberto | Fase 1 concluída |
+| 3 | `fases/fase3_exploracao.md` | Explora o shape real de contratos, schemas e entidades envolvidos | Fase 2 concluída |
+| 4 | `fases/fase4_investigacao.md` | Investiga os padrões do repositório e módulos similares | Fase 2 concluída (paralela com a Fase 3) |
+| 5 | `fases/fase5_confirmacao.md` | Deriva a lista de specs (granularidade + reuso) e confirma o escopo técnico | Fases 3 e 4 concluídas |
+| 6 | `fases/fase6_geracao.md` | Gera a pasta `.specs/sdd-<slug>/` com todos os arquivos | Fase 5 concluída |
 
 ---
 
@@ -47,17 +47,17 @@ antes de executar a fase. Os caminhos são relativos a este diretório de skill.
 |---------|-------------|
 | `PROJECT_MAP.md` (no repo alvo, gerado pela skill `project-map`) | Stack, arquitetura, estilos, testes, CI/deploy, segurança, convenções — leia **antes de tudo**; é o que ancora as fases numa stack real |
 | `.claude/sdd/perfil.md` (no repo alvo) | Só a unidade de entrega deste repositório — complementa `PROJECT_MAP.md` |
-| `templates/perfil_repo.md` | Template do perfil (usado na Fase -2) |
-| `exploracao_contratos.md` | Prompt do agente de exploração (usado na Fase 1) |
-| `templates/descricao_alto_nivel.md` | Template para `descricao_alto_nivel.md` (Fase 4) |
-| `templates/implementacao.md` | Template para `implementacao.md` (Fase 4) |
-| `templates/progresso.md` | Template para `progresso.md` (Fase 4) |
-| `templates/spec.md` | Template para cada arquivo em `specs/` (Fase 4) |
+| `templates/perfil_repo.md` | Template do perfil (usado na Fase 0) |
+| `exploracao_contratos.md` | Prompt do agente de exploração (usado na Fase 3) |
+| `templates/descricao_alto_nivel.md` | Template para `descricao_alto_nivel.md` (Fase 6) |
+| `templates/implementacao.md` | Template para `implementacao.md` (Fase 6) |
+| `templates/progresso.md` | Template para `progresso.md` (Fase 6) |
+| `templates/spec.md` | Template para cada arquivo em `specs/` (Fase 6) |
 | `regras/qualidade.md` | Regras e anti-padrões — leia antes de escrever qualquer spec |
 | `referencias/spec_template.md` | Template RFC de referência — base estrutural |
 | `referencias/sdd_guide.md` | Guia de metodologia SDD — para dúvida conceitual |
-| skill de grilling (ex.: `grilling`, do plugin `mattpocock-skills`) | Entrevista o usuário em rounds até a ideia estar afiada (Fase -1) |
-| skill/MCP do rastreador de issues, se houver | Busca o ticket quando `$ARGUMENTS` traz chave ou link (Fase -1) |
+| skill de grilling (ex.: `grilling`, do plugin `mattpocock-skills`) | Entrevista o usuário em rounds até a ideia estar afiada (Fase 1) |
+| skill/MCP do rastreador de issues, se houver | Busca o ticket quando `$ARGUMENTS` traz chave ou link (Fase 1) |
 
 ---
 
@@ -66,21 +66,21 @@ antes de executar a fase. Os caminhos são relativos a este diretório de skill.
 1. **Não pule fases.** Cada fase alimenta a seguinte — pular produz specs com contratos
    inventados ou escopo errado.
 2. **Leia `PROJECT_MAP.md` (arquitetura, stack, convenções) e `.claude/sdd/perfil.md` (unidade de
-   entrega) antes da Fase 0.** É o que impede esta skill de propor uma arquitetura que não é a
-   do repositório. Se algum dos dois não existir, rode a Fase -2 primeiro.
-3. **Fases 1 e 2 podem rodar em paralelo** (ambas dependem só da Fase 0).
+   entrega) antes da Fase 2.** É o que impede esta skill de propor uma arquitetura que não é a
+   do repositório. Se algum dos dois não existir, rode a Fase 0 primeiro.
+3. **Fases 3 e 4 podem rodar em paralelo** (ambas dependem só da Fase 2).
 4. **Leia o arquivo de instruções da fase antes de executá-la** — as instruções estão nos
    arquivos acima, não neste orquestrador.
-5. **Leia `regras/qualidade.md` antes de escrever qualquer spec** na Fase 4.
-6. **Nunca invente contrato, DTO, entidade ou schema.** Se a Fase 1 não retornou o shape real,
+5. **Leia `regras/qualidade.md` antes de escrever qualquer spec** na Fase 6.
+6. **Nunca invente contrato, DTO, entidade ou schema.** Se a Fase 3 não retornou o shape real,
    resolva os GAPS antes de continuar — ou registre `⚠️ ABERTO:` na spec, que é o que faz o
    `spec-harness` recusar a implementação.
 7. **A granularidade sai do perfil, não do seu gosto.** O campo "unidade de entrega" do
-   `perfil.md` define o que é uma spec neste repositório; a Fase 3 aplica isso.
-8. **A Fase -1 é obrigatória em toda invocação**, com ou sem ticket — a busca do ticket é o
-   único passo opcional dela. Não pule para a Fase 0 achando a descrição "clara o suficiente":
+   `perfil.md` define o que é uma spec neste repositório; a Fase 5 aplica isso.
+8. **A Fase 1 é obrigatória em toda invocação**, com ou sem ticket — a busca do ticket é o
+   único passo opcional dela. Não pule para a Fase 2 achando a descrição "clara o suficiente":
    quem decide isso é a sessão de grilling.
 9. **Não duplique lógica de outra skill.** Busca de issue e entrevista são delegadas às skills
-   correspondentes quando existirem; a Fase -1 só orquestra as chamadas.
+   correspondentes quando existirem; a Fase 1 só orquestra as chamadas.
 10. **Depois de gerar a pasta**, avise que a implementação acontece via `spec-harness`
     (`scaffold-packet` + `autorun`), não escrevendo código direto a partir do SDD.

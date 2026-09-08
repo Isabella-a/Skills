@@ -85,7 +85,7 @@ Este plugin declara duas dependências reais (`.claude-plugin/plugin.json`), ins
 acima):
 
 - **`mattpocock-skills`** — fornece `grilling` (entrevista o usuário antes de gerar a spec, usada
-  pela Fase -1 da `sdd`) e `code-review` (job automático `code_review` do `spec-harness` pós-VERIFY).
+  pela Fase 1 da `sdd`) e `code-review` (job automático `code_review` do `spec-harness` pós-VERIFY).
 - **`ponytail`** — fornece `ponytail-review` (job automático `ponytail_review`, revisão focada em
   over-engineering) e `ponytail-debt` (consolidar em ledger os comentários `ponytail:` deixados
   como atalho deliberado, sugerida ao final de uma feature).
