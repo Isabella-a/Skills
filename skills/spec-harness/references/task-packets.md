@@ -89,13 +89,15 @@ qualquer `ModuleNotFoundError`/`ImportError`/`SyntaxError` na saída.
 test_command: pytest -q --no-cov -p no:cacheprovider app/plataformas/<dominio>/tests/unit/test_x.py -m "not llm_integration"
 ~~~
 
-O `addopts` do `pytest.ini` inclui `--cov-fail-under=80` medindo `app/` inteiro: sem `--no-cov`,
-qualquer execução escopada a um arquivo reprova por cobertura com todos os testes verdes.
-`-p no:cacheprovider` evita que o `.pytest_cache` do worktree suje o fingerprint.
+Exemplo (Python/pytest): se o `addopts` do `pytest.ini` já inclui `--cov-fail-under=80` medindo
+`app/` inteiro, qualquer execução escopada a um arquivo reprova por cobertura mesmo com todos os
+testes verdes — daí o `--no-cov`. `-p no:cacheprovider` evita que o `.pytest_cache` do worktree
+suje o fingerprint. Adapte à flag equivalente do stack do repo (ou nenhuma, se o runner não força
+cobertura mínima globalmente).
 
 O comando roda o(s) arquivo(s) **da própria spec**, nunca a suíte inteira: rodar tudo em cada
 fase de cada spec é lento e mistura falhas alheias no gate desta. A suíte completa e a cobertura
-são gate do PR (`.github/workflows/automated_tests.yaml`).
+são gate do CI do repositório.
 
 ## Artefatos
 

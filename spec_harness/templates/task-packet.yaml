@@ -1,5 +1,5 @@
 # Template do packet unificado — normalmente você NÃO escreve isto à mão:
-#   node .claude/spec_harness/harness.ts scaffold-packet .specs/sdd-<feature>/specs/NN-<spec>.md
+#   node <caminho-do-harness.ts> scaffold-packet .specs/sdd-<feature>/specs/NN-<spec>.md
 # gera o arquivo a partir da spec. Este template serve de referência dos campos.
 # Ver .claude/skills/spec-harness/references/task-packets.md.
 
@@ -7,8 +7,8 @@ schema_version: 2
 unified: true
 feature: <feature-slug>            # mesmo slug da pasta .specs/sdd-<feature-slug>/
 spec_number: 1                     # NN da spec, sem zero-padding
-app: ata_agente                    # escopo único: assistente | batimentos | ata_agente |
-                                   # faq_backoffice | shared (ver harness.config.json)
+app: <escopo>                      # escopo único deste repo, entre os declarados em
+                                   # harness.config.json > scopes
 source_spec: .specs/sdd-<feature-slug>/specs/01-<nome-spec>.md
 
 required_reads:
@@ -20,15 +20,16 @@ context_paths: []
 
 # O que a fase RED pode escrever:
 test_paths:
-  - app/plataformas/ata_agente/tests/unit/test_<modulo>.py
+  - <caminho-do-escopo>/tests/unit/test_<modulo>.py
 
 # O que a fase GREEN pode escrever (a fase VERIFY não escreve nada):
 impl_paths:
-  - app/plataformas/ata_agente/<modulo>.py
+  - <caminho-do-escopo>/<modulo>.py
 
-# --no-cov é obrigatório: o addopts do pytest.ini exige 80% de cobertura do projeto inteiro e
-# reprovaria qualquer execução escopada a um arquivo.
-test_command: pytest -q --no-cov -p no:cacheprovider app/plataformas/ata_agente/tests/unit/test_<modulo>.py -m "not llm_integration"
+# Comando de teste escopado ao(s) arquivo(s) desta spec (nunca a suíte inteira). Se o runner do
+# repo força cobertura mínima globalmente (ex.: addopts do pytest.ini com --cov-fail-under), inclua
+# a flag equivalente para desligar cobertura nesta execução escopada (--no-cov no pytest).
+test_command: <comando de teste do repo, escopado ao(s) arquivo(s) de test_paths>
 
 # behavior_change (padrão, spec altera código existente) | new_module (+ missing_module)
 red_expects: behavior_change
@@ -41,7 +42,7 @@ phases:
   green: {}
     # requirements: [RF-01]        # recorte de IDs desta fase (vazio = todos)
     # artifacts:                   # contratos estruturais, quando o teste não os observa
-    #   - path: app/plataformas/ata_agente/<modulo>.py
+    #   - path: <caminho-do-escopo>/<modulo>.py
     #     requirements: [RF-01]
     #     contains: ["logger."]
     #     min_count: 1

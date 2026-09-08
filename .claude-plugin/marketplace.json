@@ -1,0 +1,26 @@
+{
+  "name": "isabella-a",
+  "owner": {
+    "name": "Isabella Antunes",
+    "url": "https://github.com/Isabella-a"
+  },
+  "description": "Skills genéricas do Claude Code para uso em qualquer repositório.",
+  "plugins": [
+    {
+      "name": "claude-skills",
+      "source": "./",
+      "description": "Referências de arquitetura (NestJS, monorepos), boas práticas React/Next.js e o fluxo sdd + spec-harness (specs testáveis com TDD e enforcement de path).",
+      "version": "1.0.0",
+      "category": "engineering",
+      "keywords": [
+        "skills",
+        "nestjs",
+        "react",
+        "monorepo",
+        "sdd",
+        "tdd",
+        "spec-driven-development"
+      ]
+    }
+  ]
+}

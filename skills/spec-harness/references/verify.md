@@ -6,10 +6,11 @@ do `merge-spec`.
 
 Os gates gravam um `.evidence.json` ao lado do packet expandido
 (`.specs/sdd-<feature>/packets/.expanded/SDD-NN-<fase>.evidence.json`). A chamada manual existe
-para depurar uma fase isolada, e exige a execução ativa correspondente:
+para depurar uma fase isolada, e exige a execução ativa correspondente (`$HARNESS` = caminho do
+`harness.ts` conforme a instalação, plugin ou manual — ver SKILL.md):
 
 ~~~bash
-node ~/.claude/spec_harness/harness.ts verify-packet .specs/sdd-<feature>/packets/.expanded/SDD-NN-<fase>.yaml
+node $HARNESS verify-packet .specs/sdd-<feature>/packets/.expanded/SDD-NN-<fase>.yaml
 ~~~
 
 ## Gates automáticos
@@ -17,8 +18,8 @@ node ~/.claude/spec_harness/harness.ts verify-packet .specs/sdd-<feature>/packet
 - packet estruturalmente válido;
 - spec Markdown existente e sem marcador `⚠️ ABERTO:` pendente;
 - IDs RF/EC/T existentes na spec;
-- diff restrito a `capabilities.write.paths` e ao escopo declarado em `app` — sem cruzar
-  `app/plataformas/<dominio>/` com outro domínio nem com `app/shared/`;
+- diff restrito a `capabilities.write.paths` e ao escopo declarado em `app` — sem cruzar o
+  diretório de um domínio com o de outro nem com o escopo `shared`;
 - novas alterações em arquivos previamente sujos detectadas por fingerprint;
 - validações referenciadas em `done_when.validation_ids` executadas;
 - contratos estruturais de `validation.artifacts` satisfeitos, quando declarados;
@@ -44,7 +45,7 @@ funções de produção que a spec alterou (diff `base...spec/<feature>/<NN>`, n
 1. roda a suíte do **escopo** com `--cov-report=json` (`crap.coverage_command`, alvos de
    `crap.scope_tests` ou derivados de `scopes.paths`) — o denominador é a suíte do app, não o
    `test_command` da spec, que infla o CRAP de código já coberto;
-2. chama `~/.claude/spec_harness/tools/crap_calculator.py` com `--only-from` restrito a esses
+2. chama `tools/crap_calculator.py`, ao lado do `harness.ts`, com `--only-from` restrito a esses
    arquivos: `CRAP = complexidade² × (1 − cobertura)³ + complexidade`. Exige `radon` e um plugin de
    cobertura que gere JSON do coverage.py no ambiente do repo.
 
@@ -92,7 +93,7 @@ quando o quiz é gabaritado. Sem ele o harness para **sem** mergear nem apagar b
 Para reexecutar só a revisão (depois de ajustar prompt/modelo na config):
 
 ~~~bash
-node ~/.claude/spec_harness/harness.ts post-verify .specs/sdd-<feature>/packets/.expanded/SDD-NN-verify.yaml
+node $HARNESS post-verify .specs/sdd-<feature>/packets/.expanded/SDD-NN-verify.yaml
 ~~~
 
 ## Retry após falha
@@ -144,7 +145,6 @@ semântico, e é seu.
 `autorun --no-merge` existe para essa pausa. Sem a flag, o merge e o apagamento da branch
 acontecem no fim do próprio autorun, sem intervalo para leitura.
 
-Lembre que o PR do repositório ainda tem gates próprios — em `dados-one-assistant`,
-`.github/workflows/automated_tests.yaml` roda a suíte completa com PostgreSQL real e a cobertura
-de 80%, e `gemini-review.yml` faz o review automático do PR. A revisão do harness é a que
-acontece cedo, não a única.
+Lembre que o PR do repositório ainda tem gates próprios de CI (suíte completa, cobertura mínima,
+revisão automática de PR, quando existirem) — a revisão do harness é a que acontece cedo, não a
+única.

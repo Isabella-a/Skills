@@ -1,9 +1,9 @@
 # Claude Code Skills
 
 Coleção de [Skills](https://docs.claude.com/en/docs/claude-code/skills) genéricas para o
-[Claude Code](https://claude.com/claude-code), instaladas uma única vez e disponíveis
-automaticamente em **qualquer** repositório da sua máquina — sem precisar copiar nada projeto a
-projeto.
+[Claude Code](https://claude.com/claude-code), empacotadas como um **plugin**: instale uma vez e
+elas ficam disponíveis automaticamente em **qualquer** repositório da sua máquina — sem precisar
+copiar nada projeto a projeto.
 
 Cada skill é reaproveitável por design: nenhuma delas assume convenções, nomes ou estrutura de um
 projeto específico. Se você precisa de uma skill amarrada às regras de um repositório em
@@ -12,51 +12,30 @@ particular, ela deve viver no `.claude/skills/` daquele repositório, não aqui.
 ## Pré-requisitos
 
 - [Claude Code](https://claude.com/claude-code) instalado.
-- Git.
 - Para usar as skills `sdd` / `spec-harness`: [Node.js](https://nodejs.org) recente (22.6+), com
   suporte nativo à execução de arquivos `.ts`.
 
 ## Instalação
 
-```bash
-git clone https://github.com/Isabella-a/Skills.git
-cd Skills
+Dentro do Claude Code, em qualquer repositório:
+
+```
+/plugin marketplace add Isabella-a/Skills
+/plugin install claude-skills@isabella-a
 ```
 
-**Windows (PowerShell):**
-
-```powershell
-.\install.ps1
-```
-
-**Linux / macOS / WSL (bash):**
-
-```bash
-./install.sh
-```
-
-O script cria um **link simbólico** de cada skill em `~/.claude/skills/<nome>` e, quando aplicável,
-do motor do spec-harness em `~/.claude/spec_harness`. Por serem links, qualquer atualização
-puxada com `git pull` neste repositório já reflete em todos os projetos, sem reinstalar nada.
-
-No Windows, criar link simbólico sem ser administrador exige o **Modo de Desenvolvedor** ativado
-(Configurações → Sistema → Para desenvolvedores). Sem ele, o script cai automaticamente para cópia
-de arquivos — nesse caso, rode `.\install.ps1` de novo depois de um `git pull` para propagar
-atualizações.
+Não é preciso `git clone` nem rodar nenhum script — o Claude Code busca e mantém o plugin
+atualizado sozinho.
 
 ### Verificando a instalação
 
-```powershell
-Get-ChildItem "$HOME\.claude\skills"
+```
+/plugin
 ```
 
-```bash
-ls ~/.claude/skills
-```
-
-Abra o Claude Code em qualquer repositório e digite `/` para ver as skills instaladas na lista de
-comandos, ou simplesmente descreva a tarefa em linguagem natural — o Claude reconhece o pedido e
-ativa a skill certa sozinho.
+Abra a lista de plugins instalados e confirme `claude-skills`. Ou digite `/` em qualquer
+repositório para ver as skills na lista de comandos, ou simplesmente descreva a tarefa em
+linguagem natural — o Claude reconhece o pedido e ativa a skill certa sozinho.
 
 ## Skills disponíveis
 
@@ -70,36 +49,31 @@ ativa a skill certa sozinho.
 
 ### `sdd` + `spec-harness` em detalhe
 
-Essas duas skills se encadeiam e vêm do plugin
-[Spec-Harness](https://github.com/VitorMRCNeves/Spec-Harness): `sdd` produz as specs,
-`spec-harness` as implementa. Na primeira execução em um repositório novo, elas se auto-configuram:
+Essas duas skills se encadeiam: `sdd` produz as specs, `spec-harness` as implementa. Na primeira
+execução em um repositório novo, elas se auto-configuram:
 
 1. `sdd` escaneia o projeto (perguntando o que não conseguir inferir) e grava
    `.claude/sdd/perfil.md`.
 2. `spec-harness` roda `init-repo` / `doctor` para gerar `.claude/spec_harness/harness.config.json`
    e registrar o hook de enforcement de path — nada disso precisa ser configurado manualmente.
 
-Dependências externas a este repositório (ambas opcionais, mas usadas se disponíveis):
+Dependências externas a este plugin (ambas opcionais, mas usadas se disponíveis):
 
 - skill `grilling` (plugin `mattpocock-skills`) — entrevista o usuário antes de gerar a spec.
 - skill/MCP de rastreador de issues (Jira, GitHub Issues etc.) — para resolver um ticket por
   chave ou link.
 
+## Atualizando
+
+```
+/plugin marketplace update isabella-a
+```
+
 ## Estrutura do repositório
 
 ```text
+.claude-plugin/    # marketplace.json e plugin.json — manifesto do plugin
 skills/            # uma pasta por skill, com SKILL.md na raiz de cada uma
-spec_harness/      # motor do spec-harness (harness.ts) — não é uma skill, instalado à parte
-install.ps1        # instalação no Windows
-install.sh         # instalação no Linux/macOS/WSL
+spec_harness/      # motor do spec-harness (harness.ts) — não é uma skill
+hooks/             # hook de enforcement de path usado pelo spec-harness
 ```
-
-## Atualizando
-
-```bash
-git pull
-```
-
-Como a instalação é por link simbólico, um `git pull` já é suficiente — não é preciso rodar o
-script de instalação de novo, exceto quando uma skill nova for adicionada ou a instalação tiver
-caído para modo cópia (ver aviso do Modo de Desenvolvedor acima).
