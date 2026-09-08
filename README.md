@@ -70,12 +70,6 @@ segurança e configuração, observabilidade/feature flags, convenções de cód
 integrações externas e fluxo de trabalho. Se adapta sozinha a monorepo (uma linha por workspace)
 ou projeto único (uma linha só).
 
-Se você já usa ou conhece o [Graphify](https://github.com/Graphify-Labs/graphify) — um grafo de
-conhecimento local que também mapeia código, docs, PDFs e imagens — ele resolve um problema
-adjacente e complementar (consultas repetidas num grafo consultável por semanas), não o mesmo
-que o `project-map` resolve aqui (uma doc de arquitetura gerada uma vez). Não é dependência deste
-plugin; vale como ferramenta à parte para quem quiser esse tipo de exploração mais profunda.
-
 ### `sdd` + `spec-harness` em detalhe
 
 Essas duas skills se encadeiam: `sdd` produz as specs, `spec-harness` as implementa. Na primeira
