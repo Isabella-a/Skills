@@ -11,8 +11,10 @@ Este documento existe para revisar o que ele gerou e para os campos que ele não
 ## Como gerar
 
 ~~~bash
-node ~/.claude/spec_harness/harness.ts scaffold-packet .specs/sdd-<feature>/specs/NN-<spec>.md
+node $HARNESS scaffold-packet .specs/sdd-<feature>/specs/NN-<spec>.md
 ~~~
+
+(`$HARNESS` = caminho do `harness.ts` conforme a instalação, plugin ou manual — ver SKILL.md.)
 
 Ele extrai da spec:
 
@@ -66,27 +68,27 @@ harness recusa como RED. Por isso a falha esperada é declarada:
 
 ~~~yaml
 red_expects: new_module
-missing_module: plataformas.ata_agente.smoke_dummy
+missing_module: <pacote>.<modulo>
 ~~~
 
 O gate passa a exigir exit 1, `failed` e o nome exato do módulo na saída. O teste precisa
 importar **dentro do corpo**:
 
 ~~~python
-def test_normaliza_titulo_colapsa_espacos() -> None:
-    from plataformas.ata_agente.smoke_dummy import normaliza_titulo   # import DENTRO do teste
+def test_normaliza_espacos_em_branco() -> None:
+    from <pacote>.<modulo> import normaliza_texto   # import DENTRO do teste
 
-    assert normaliza_titulo("  a   b ") == "a b"
+    assert normaliza_texto("  a   b ") == "a b"
 ~~~
 
 Quando a spec altera comportamento de código **já existente** — o caso comum — use
 `red_expects: behavior_change` (padrão): import no topo, assert que falha, e o gate proíbe
 qualquer `ModuleNotFoundError`/`ImportError`/`SyntaxError` na saída.
 
-## Comando de teste — `--no-cov` obrigatório
+## Comando de teste escopado
 
 ~~~yaml
-test_command: pytest -q --no-cov -p no:cacheprovider app/plataformas/<dominio>/tests/unit/test_x.py -m "not llm_integration"
+test_command: pytest -q --no-cov -p no:cacheprovider <caminho-do-escopo>/tests/unit/test_x.py
 ~~~
 
 Exemplo (Python/pytest): se o `addopts` do `pytest.ini` já inclui `--cov-fail-under=80` medindo
@@ -108,7 +110,7 @@ não é observável pelo teste (um ADR que precisa existir, um logger obrigatór
 phases:
   green:
     artifacts:
-      - path: app/plataformas/<dominio>/service.py
+      - path: <caminho-do-escopo>/service.py
         requirements: [RF-01]
         contains: ["logger."]
         min_count: 1
@@ -129,12 +131,13 @@ required_reads:
   - .specs/sdd-<feature>/specs/05-<spec-dependida>.md   # só pela seção ## Contratos
 ~~~
 
-### Caso cross-escopo: contrato em `app/shared/`
+### Caso cross-escopo: contrato no escopo `shared`
 
 Um DTO usado por mais de um domínio não é redigitado em cada um. Vira uma spec própria escopada
-em `app/shared/models/**`, com `app: shared`, e as specs dependentes leem a seção `## Contratos`
-dela. Um packet que listasse `app/plataformas/<outro>/` fora do seu `app` é reprovado na
-validação — é a regra de dependências do `CLAUDE.md` aplicada ao harness.
+no escopo `shared` (ver `scopes` do `harness.config.json`), com `app: shared`, e as specs
+dependentes leem a seção `## Contratos` dela. Um packet que listasse o caminho de outro escopo
+fora do seu `app` é reprovado na validação — é a regra de dependências entre camadas do
+`CLAUDE.md`/`AGENTS.md` do repositório aplicada ao harness.
 
 ## Orçamento de leitura
 
