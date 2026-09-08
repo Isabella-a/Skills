@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2"
+  },
+  "name": "spec-harness",
+  "description": "Motor de enforcement da skill spec-harness (rodar com: node .claude/spec_harness/harness.ts)",
+  "scripts": {
+    "typecheck": "tsc --noEmit --project tsconfig.json"
+  }
+}
