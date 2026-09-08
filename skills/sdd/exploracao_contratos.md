@@ -8,9 +8,9 @@ Não implemente nada. Não sugira arquitetura. Só explore e documente o que exi
 
 **Contrato/schema a explorar:** $FONTE
 **Contexto da feature:** $CONTEXTO
-**Perfil do repositório:** leia `.claude/sdd/perfil.md` antes de começar — ele diz onde cada tipo
-de artefato mora neste repositório. Use os caminhos de lá nos comandos abaixo, em vez de
-adivinhar a estrutura.
+**Mapa do repositório:** leia `PROJECT_MAP.md` antes de começar — ele diz onde cada tipo de
+artefato mora neste repositório. Use os caminhos de lá nos comandos abaixo, em vez de adivinhar a
+estrutura.
 
 ---
 
@@ -60,9 +60,9 @@ Siga o roteiro correspondente ao tipo de fonte.
 
 ### Se a fonte for um serviço externo
 
-1. **Localize o cliente/adaptador que já existe** para esse serviço no repositório — o perfil
-   lista as integrações recorrentes. Não presuma que não existe: reimplementar cliente é um dos
-   erros mais caros.
+1. **Localize o cliente/adaptador que já existe** para esse serviço no repositório —
+   `PROJECT_MAP.md § Integrações externas recorrentes` lista onde. Não presuma que não existe:
+   reimplementar cliente é um dos erros mais caros.
 
 2. **Leia o cliente**: endpoints/métodos usados, autenticação, formato de resposta, tratamento de
    timeout e de erro, retry.

@@ -9,9 +9,9 @@ aplicável), o shape do contrato (Fase 1) e a investigação do repositório (Fa
 ## Perguntas desta fase
 
 1. **Camadas envolvidas:** quais camadas do repositório esta entrega atravessa, na ordem em que
-   o perfil (`.claude/sdd/perfil.md § Estrutura e fronteiras`) as declara — schema, persistência,
-   regra de negócio, exposição, consumo? É subset ou o caminho inteiro? (Só pergunte o que não
-   ficou claro na Fase 0.)
+   `PROJECT_MAP.md § Arquitetura e estrutura real` as declara — schema, persistência, regra de
+   negócio, exposição, consumo? É subset ou o caminho inteiro? (Só pergunte o que não ficou claro
+   na Fase 0.)
 2. **Efeito colateral:** a entrega dispara algo fora do fluxo principal (notificação,
    sincronização, job)? Use o mecanismo que o repositório já tem para isso.
 3. **Modos de falha:** o que acontece quando a validação falha? Quando o recurso não existe?

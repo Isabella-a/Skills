@@ -7,7 +7,7 @@ suficiente para virar spec.
 **Roda sempre**, mesmo quando a invocação trouxe só uma descrição livre — a diferença é apenas a
 semente da entrevista (o ticket vs. o texto de `$ARGUMENTS`).
 
-O rastreador usado (se houver) está registrado em `.claude/sdd/perfil.md § Fluxo de trabalho`.
+O rastreador usado (se houver) está registrado em `PROJECT_MAP.md § Fluxo de trabalho`.
 Se lá estiver "nenhum", pule direto para `-1.3`.
 
 ---
@@ -34,9 +34,9 @@ Só prossiga depois dessa decisão.
 ## -1.1 — Detectar referência de ticket em `$ARGUMENTS`
 
 - **Chave de issue:** padrão `[A-Z][A-Z0-9]+-\d+` (ex.: `ABC-1234`). Se vier só o número, use o
-  prefixo de projeto registrado no perfil do repositório; se o perfil não declarar nenhum,
+  prefixo de projeto registrado em `PROJECT_MAP.md § Fluxo de trabalho`; se não declarar nenhum,
   pergunte em vez de adivinhar.
-- **Link:** URL de issue do rastreador declarado no perfil (Jira, Linear, GitHub Issues…).
+- **Link:** URL de issue do rastreador declarado em `PROJECT_MAP.md` (Jira, Linear, GitHub Issues…).
 
 Sem nenhum dos dois, **não há ticket**: vá para `-1.3` usando `$ARGUMENTS` como a ideia solta.
 

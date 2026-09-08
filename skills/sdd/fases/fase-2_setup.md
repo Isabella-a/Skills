@@ -1,117 +1,82 @@
-# Fase -2 — Setup do repositório (roda uma vez)
+# Fase -2 — Perfil da entrega (roda uma vez por repositório)
 
-Esta skill não sabe nada sobre o repositório em que foi invocada. Sem isso, as fases seguintes
-produzem specs genéricas demais para serem implementáveis: "crie o serviço" sem saber onde
-serviços moram, o que é obrigatório num teste ali, ou o que conta como uma entrega fechada.
+Esta fase garante que a `sdd` conhece o repositório antes de perguntar qualquer coisa sobre a
+feature. Ela depende de duas fontes:
 
-Esta fase resolve isso **uma única vez por repositório**, gravando `.claude/sdd/perfil.md`.
-Todas as fases seguintes leem esse arquivo em vez de assumir uma stack.
+1. **`PROJECT_MAP.md`** (raiz do repo) — stack, arquitetura, estilos, testes, ambiente local,
+   CI/CD e deploy, segurança, observability, convenções de código, integrações externas e fluxo
+   de trabalho. Gerado pela skill `project-map`, **não** por esta fase.
+2. **`.claude/sdd/perfil.md`** — só o que é específico de spec e não cabe em `PROJECT_MAP.md`: a
+   unidade de entrega deste repositório. Gerado por esta fase.
+
+Sem essas duas fontes, as fases seguintes produzem specs genéricas demais para serem
+implementáveis: "crie o serviço" sem saber onde serviços moram, o que é obrigatório num teste
+ali, ou o que conta como uma entrega fechada.
 
 ---
 
-## -2.0 — O perfil já existe?
+## -2.0 — `PROJECT_MAP.md` existe?
 
 ```bash
-cat .claude/sdd/perfil.md 2>/dev/null | head -40
+cat PROJECT_MAP.md 2>/dev/null | head -20
 ```
 
-- **Existe:** leia o arquivo inteiro, guarde o conteúdo para as fases seguintes e **pule para a
-  Fase -1**. Não repita as perguntas.
-- **Existe mas está desatualizado** (o usuário pediu `--setup`, disse que a estrutura mudou, ou
-  você encontrou contradição flagrante entre o perfil e o repositório): refaça esta fase e
-  sobrescreva o arquivo, avisando o que mudou.
-- **Não existe:** siga para -2.1.
+- **Existe:** leia o arquivo inteiro e guarde o conteúdo para as fases seguintes. Siga para -2.1.
+- **Não existe:** pergunte ao usuário — "Não encontrei `PROJECT_MAP.md` na raiz do repositório.
+  Gerar agora deixa as specs mais precisas (stack, arquitetura e convenções reais, em vez de
+  genéricas). Posso rodar a skill `project-map` primeiro?"
+  - **Aceitar:** invoque `Skill(skill: "project-map")` e espere terminar antes de continuar.
+  - **Recusar:** prossiga sem ele, avisando que as specs vão assumir menos sobre o repositório e
+    que "Padrões obrigatórios"/"Testes" das fases seguintes ficam mais genéricos.
 
----
+## -2.1 — `.claude/sdd/perfil.md` existe?
 
-## -2.1 — Escaneie antes de perguntar
+```bash
+cat .claude/sdd/perfil.md 2>/dev/null
+```
 
-Pergunte só o que o repositório não responde sozinho. Levante, nesta ordem:
+- **Existe:** leia, guarde e **pule para a Fase -1**. Não repita a pergunta da unidade de
+  entrega.
+- **Existe mas está desatualizado** (usuário pediu `--setup`, ou a unidade de entrega mudou):
+  refaça -2.2 e sobrescreva, avisando o que mudou.
+- **Não existe:** siga para -2.2.
 
-1. **Documentação de agente já existente** — é a fonte mais rica e a que o usuário já mantém:
-   ```bash
-   ls CLAUDE.md AGENTS.md .cursorrules CONTRIBUTING.md README.md 2>/dev/null
-   ```
-   Se houver `CLAUDE.md`/`AGENTS.md`, leia inteiro. Regras arquiteturais, "onde cada artefato
-   vai" e convenções de teste normalmente já estão lá — **não duplique**: referencie.
+## -2.2 — Descubra a unidade de entrega
 
-2. **Perfil do spec-harness**, se o repo já foi inicializado:
-   ```bash
-   cat .claude/spec_harness/harness.config.json 2>/dev/null
-   ```
-   Dele saem de graça: `scopes` (as fronteiras que uma spec não pode cruzar),
-   `source_extensions`, `test_markers`, comando de teste e validadores. Se existir, o perfil do
-   SDD **tem de ser consistente com ele** — escopo declarado ali é escopo aqui.
+Esta é a única pergunta que este arquivo existe para responder — tudo o mais já está em
+`PROJECT_MAP.md`. Cruzando o que `PROJECT_MAP.md § Arquitetura e estrutura real` diz sobre
+camadas/módulos, use `AskUserQuestion` (uma única chamada, mostrando o que já foi inferido) para
+confirmar:
 
-3. **Manifesto e ferramentas**: `package.json`, `pyproject.toml`, `requirements*.txt`, `go.mod`,
-   `pom.xml`, `Gemfile`, `Cargo.toml`, `composer.json` — linguagem, framework, scripts de teste
-   e lint.
+- **O que conta como "uma spec" neste repositório?** Um endpoint com validação + persistência?
+  Um caso de uso de domínio com seu contrato? Uma tela com seu hook de dados? Uma task de um DAG?
+- Peça um exemplo real e pequeno do repositório ("isto é uma spec") e um exemplo do que é grande
+  demais ("isto vira duas ou mais specs").
+- Se `PROJECT_MAP.md` já indicar full-stack (frontend + backend na mesma entrega), confirme a
+  ordem típica entre os eixos (ex.: contrato → persistência → exposição HTTP → consumo na tela).
 
-4. **Estrutura real**, não a imaginada:
-   ```bash
-   git ls-files | head -200
-   git ls-files | awk -F/ 'NF>1 {print $1"/"$2}' | sort | uniq -c | sort -rn | head -30
-   ```
-   Isso mostra onde o código de fato está e quais diretórios concentram mudança.
+Se o repositório já tiver `.claude/spec_harness/harness.config.json` inicializado, dê uma olhada
+rápida nos `scopes` declarados — eles confirmam as fronteiras que uma spec não pode cruzar:
 
-5. **Testes**: onde ficam, como se chamam (`test_*.py`, `*.spec.ts`, `*_test.go`), se são
-   co-localizados ou em árvore separada, e se há níveis distintos (unit / integração / e2e).
-
-6. **CI e gates**: `.github/workflows/*`, `.gitlab-ci.yml`, `Makefile` — o que precisa passar
-   para um PR mergear (cobertura mínima, lint, typecheck).
-
-7. **Rastreador de issues**: remotes do git, referências a Jira/Linear/GitHub Issues em
-   `CONTRIBUTING.md`, prefixos de chave em `git log --oneline -30`.
-
----
-
-## -2.2 — Pergunte o que sobrou
-
-Use `AskUserQuestion`, **no máximo 4 perguntas por chamada**, e só sobre o que o escaneamento
-não resolveu. Para cada pergunta, mostre o que você inferiu e peça confirmação em vez de
-perguntar do zero — é mais rápido para o usuário corrigir do que descrever.
-
-Os eixos que precisam estar respondidos ao fim desta fase:
-
-| Eixo | Por que a skill precisa disso |
-|---|---|
-| **Tipo de projeto e domínio** | API, app web, CLI, biblioteca, pipeline de dados, infra — muda o que é um contrato e o que é um caso de borda relevante |
-| **Camadas e fronteiras** | Onde cada tipo de artefato mora e quais dependências são proibidas — é o que impede uma spec de atravessar módulos |
-| **Unidade de entrega** | O que conta como "uma spec" ali: um endpoint? um caso de uso? uma tela? um DAG? Sem isso a Fase 3 fatia errado |
-| **Padrões obrigatórios** | Tratamento de erro, logging, injeção de dependência, validação de entrada — o que o revisor cobra |
-| **Testes obrigatórios** | Quais níveis são exigidos por tipo de mudança, e o que um teste precisa asserir para valer |
-| **Integrações externas recorrentes** | Quais serviços a maioria das features toca — alimenta os casos de borda de indisponibilidade |
-| **Fluxo de trabalho** | Rastreador de issues (se houver), convenção de branch, o que o PR exige |
-
-Perguntas que **não** devem ser feitas aqui: nada específico da feature que o usuário quer
-construir. Esta fase é sobre o repositório; a feature começa na Fase -1.
-
----
+```bash
+cat .claude/spec_harness/harness.config.json 2>/dev/null
+```
 
 ## -2.3 — Escreva o perfil
 
-Use `templates/perfil_repo.md` e grave em `.claude/sdd/perfil.md`.
+Use `templates/perfil_repo.md` e grave em `.claude/sdd/perfil.md`. Ele deve caber em poucas
+linhas — é só a unidade de entrega, não uma cópia de `PROJECT_MAP.md`. Para tudo o mais (stack,
+padrões obrigatórios, testes, integrações externas, fluxo de trabalho), as fases seguintes leem
+`PROJECT_MAP.md` diretamente.
 
-Regras ao escrever:
+Marque `⚠️ ABERTO:` no que ficar incerto.
 
-1. **Registre a origem de cada afirmação.** "Serviços ficam em `src/services/` (visto em
-   `git ls-files`)" vale; "Serviços ficam em `src/services/`" sem lastro vira lenda que as
-   próximas 20 specs vão repetir.
-2. **Não copie o `CLAUDE.md`.** Se a regra já está lá, escreva "ver `CLAUDE.md § Regras de
-   Código`" — documentação duplicada diverge.
-3. **Marque o que ficou incerto** com `⚠️ ABERTO:` e diga o que resolveria. A Fase 2 pode
-   fechar a lacuna investigando o código, e o `spec-harness` recusa spec com `⚠️ ABERTO:`
-   pendente.
-4. **Seja concreto sobre a unidade de entrega.** É o campo que mais afeta a qualidade das specs
-   geradas: escreva um exemplo real de "isto é uma spec" e um de "isto é grande demais".
-
-Ao terminar, mostre um resumo de 5 linhas ao usuário e diga como refazer: rodar a skill com
+Ao terminar, mostre um resumo de 2-3 linhas ao usuário e diga como refazer: rodar a skill com
 `--setup` ou apagar `.claude/sdd/perfil.md`.
-
----
 
 ## -2.4 — Versionar
 
-`.claude/sdd/perfil.md` **deve ser versionado com o repositório**: ele descreve o projeto, não a
-máquina. Se `.claude/` estiver no `.gitignore`, avise o usuário — sem versionar, cada
-desenvolvedor (e cada agente) responde as perguntas de novo e as respostas divergem.
+Tanto `PROJECT_MAP.md` quanto `.claude/sdd/perfil.md` **devem ser versionados** com o
+repositório: descrevem o projeto, não a máquina. Se `.claude/` estiver no `.gitignore`, avise o
+usuário — sem versionar, cada desenvolvedor (e cada agente) responde as perguntas de novo e as
+respostas divergem.

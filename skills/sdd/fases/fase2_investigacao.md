@@ -2,9 +2,9 @@
 
 Lance **dois agentes Explore simultaneamente**. Aguarde ambos antes de prosseguir para a Fase 3.
 
-Antes de montar os prompts, releia `.claude/sdd/perfil.md`: os caminhos, camadas e padrões que
-ele declara é que dizem **onde** os agentes devem olhar. Substitua os `<...>` abaixo por valores
-concretos vindos do perfil — um prompt genérico devolve um relatório genérico.
+Antes de montar os prompts, releia `PROJECT_MAP.md`: os caminhos, camadas e padrões que ele
+declara é que dizem **onde** os agentes devem olhar. Substitua os `<...>` abaixo por valores
+concretos vindos dele — um prompt genérico devolve um relatório genérico.
 
 ---
 
@@ -18,12 +18,12 @@ Agent(
   Escanear para entender os padrões que a nova feature deve seguir.
 
   1. Leia a documentação de agente da raiz (CLAUDE.md / AGENTS.md, se existirem) e
-     .claude/sdd/perfil.md — regras arquiteturais, camadas e dependências proibidas.
-  2. Localize a camada onde esta feature vai morar (<camadas declaradas no perfil>) e leia o
-     exemplo mais próximo do que ela precisa fazer: como recebe entrada, como valida, como
+     PROJECT_MAP.md — regras arquiteturais, camadas e dependências proibidas.
+  2. Localize a camada onde esta feature vai morar (<camadas declaradas no PROJECT_MAP.md>) e
+     leia o exemplo mais próximo do que ela precisa fazer: como recebe entrada, como valida, como
      devolve erro, como persiste.
-  3. Leia o tratamento de erro padrão do repositório (<padrão declarado no perfil>) e um exemplo
-     de quem o consome — como o erro atravessa as camadas até a borda.
+  3. Leia o tratamento de erro padrão do repositório (<padrão declarado no PROJECT_MAP.md>) e um
+     exemplo de quem o consome — como o erro atravessa as camadas até a borda.
   4. Se a feature envolve efeito colateral (transação, fila, job, evento), leia um exemplo real
      desse mecanismo no repositório.
   5. Se a feature integra com serviço externo, leia o cliente/adaptador que já existe para ele —
@@ -71,5 +71,5 @@ Ao receber os dois relatórios, registre para a Fase 3:
 
 - **O que reusar** (com caminho) — cada item aqui é uma spec que não precisa existir.
 - **O padrão a seguir** por tipo de artefato, para a spec não propor uma arquitetura paralela.
-- **Divergências entre o perfil e o código real.** Se o repositório contradiz
-  `.claude/sdd/perfil.md`, o código vence: corrija o perfil e diga ao usuário o que mudou.
+- **Divergências entre `PROJECT_MAP.md` e o código real.** Se o repositório contradiz o mapa, o
+  código vence: corrija `PROJECT_MAP.md` e diga ao usuário o que mudou.

@@ -11,8 +11,13 @@ construíveis, esta aqui as implementa. Não crie uma segunda definição da fea
 Markdown continua sendo a fonte da verdade.
 
 Se a pasta `.specs/sdd-<feature>/` ainda não existir, não improvise um packet: rode `/sdd`
-primeiro. E se `.claude/sdd/perfil.md` existir, leia-o — ele descreve as camadas e os padrões do
-repositório que os prompts de RED e GREEN vão cobrar.
+primeiro.
+
+Se `PROJECT_MAP.md` existir na raiz do repositório, leia-o antes de montar ou revisar qualquer
+packet — ele descreve stack, arquitetura, testes e convenções de código deste repositório, e é
+o que os prompts de RED/GREEN e o job `code_review` do pós-VERIFY vão cobrar. Se não existir,
+pergunte ao usuário se quer gerá-lo agora (`Skill(skill: "project-map")`) antes de continuar —
+melhora a precisão dos gates e da revisão. Se recusar, prossiga só com `harness.config.json`.
 
 Ambiente: ative o ambiente do repositório (venv/conda, nvm, etc. — ver `CLAUDE.md`/`AGENTS.md`
 dele) antes de qualquer teste ou lint; o harness herda o ambiente da sessão que o invoca.
