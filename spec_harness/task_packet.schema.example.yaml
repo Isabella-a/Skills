@@ -1,0 +1,81 @@
+# Exemplo preenchido (fase GREEN, escopo ata_agente) — para referência de formato.
+# Não é lido pelo harness; é só material de apoio para escrever packets novos.
+
+schema_version: 2
+packet_id: SDD-01-green
+feature: ata-ledger-de-fatos
+spec_number: 1
+phase: green
+app: ata_agente
+source_spec: .specs/sdd-ata-ledger-de-fatos/specs/01-ledger-service.md
+
+required_reads:
+  - .specs/sdd-ata-ledger-de-fatos/specs/01-ledger-service.md
+  - app/plataformas/ata_agente/tests/unit/test_ledger.py
+  - app/plataformas/ata_agente/models.py
+
+verifies:
+  requirements: [RF-01, RF-02, EC-01, EC-02, T-01, T-02, T-03]
+
+done_when:
+  requirements: [RF-01, RF-02, T-01, T-02, T-03]
+  validation_ids: [test_green, test_integration_green]
+
+capabilities:
+  read:
+    paths:
+      - .specs/sdd-ata-ledger-de-fatos/specs/01-ledger-service.md
+      - app/plataformas/ata_agente/**
+    justification: >
+      GREEN precisa ler o teste RED (já escrito), os DTOs em models.py e o service do domínio
+      para implementar sem reinventar infraestrutura existente.
+  write:
+    paths:
+      - app/plataformas/ata_agente/ledger.py
+      - app/plataformas/ata_agente/models.py
+  bash:
+    commands:
+      - "pytest -q --no-cov -p no:cacheprovider app/plataformas/ata_agente/tests/unit/test_ledger.py -m \"not llm_integration\""
+      - "pytest -q --no-cov -p no:cacheprovider app/plataformas/ata_agente/tests/integration/test_ledger_router.py -m \"not llm_integration\""
+
+token_budget:
+  max_initial_reads: 6
+  max_initial_read_bytes: 400000
+  max_read_lines: 500
+  max_search_results: 50
+  prefer_edit_over_write: true
+  allow_broad_read: false
+
+validation:
+  commands:
+    - id: test_green
+      run: "pytest -q --no-cov -p no:cacheprovider app/plataformas/ata_agente/tests/unit/test_ledger.py -m \"not llm_integration\""
+      required_result: pass
+    - id: test_integration_green
+      run: "pytest -q --no-cov -p no:cacheprovider app/plataformas/ata_agente/tests/integration/test_ledger_router.py -m \"not llm_integration\""
+      required_result: pass
+  artifacts:
+    - path: app/plataformas/ata_agente/ledger.py
+      requirements: [RF-02]
+      contains: ["logger."]
+      not_contains: ["print("]
+      min_count: 1
+
+enforcement:
+  blocked_tool_calls: review
+
+manual_review:
+  contract:
+    must:
+      - "ledger.py expõe registrar_fato(fato: Fato) -> LedgerEntry com type hints completos"
+      - "estados do ledger são Enum em models.py, não strings literais"
+    must_not:
+      - "nenhum except Exception antes das exceções específicas do domínio"
+      - "nenhum acesso direto a Redis fora do StateManager"
+  forbidden:
+    behaviors:
+      - "importar de outra plataforma (plataformas/assistente) a partir de ata_agente"
+      - "credencial lida de os.environ em vez de get_secret_value()"
+  review:
+    focus:
+      - "confirmar que o node LangGraph appenda ao node_trail e devolve UserState"

@@ -26,30 +26,54 @@ componentes React/Next.js.
 Referência geral de gestão de monorepos com Turborepo, Nx e pnpm workspaces —
 builds otimizados, dependências compartilhadas, estrutura de packages.
 
+### `sdd` + `spec-harness`
+Duas skills encadeadas, vindas do plugin [Spec-Harness](https://github.com/VitorMRCNeves/Spec-Harness)
+(cópia local do estado de trabalho, não instalada via marketplace): `sdd`
+quebra uma entrega em specs construíveis (`.specs/sdd-<feature>/`) e
+`spec-harness` implementa cada uma em RED→GREEN→VERIFY dentro de um git
+worktree isolado, com enforcement de path e revisão automática. São
+genéricas por design — na primeira execução num repositório novo, a própria
+skill escaneia o projeto e grava `.claude/sdd/perfil.md`, e o `spec-harness`
+roda `init-repo`/`doctor` para gerar o `.claude/spec_harness/harness.config.json`
+daquele repo.
+
+Dependem de duas coisas fora deste repositório:
+- skill `grilling` (plugin `mattpocock-skills`) — entrevista o usuário antes
+  de gerar a spec.
+- skill/MCP de rastreador de issues (Jira, GitHub Issues etc.), se você
+  quiser resolver ticket por chave/link — opcional.
+
+O motor (`spec_harness/`, na raiz deste repo) **não é uma skill** — é o
+executável (`harness.ts` + `hook-guard.sh`) que a skill `spec-harness`
+invoca. É instalado à parte, em `~/.claude/spec_harness/` (ver Instalação
+abaixo), porque o texto da skill referencia esse caminho fixo. O hook de
+enforcement de path em cada repo (`PreToolUse` em `.claude/settings.json`)
+é escrito automaticamente pelo próprio `harness.ts init-repo` na primeira
+vez que a skill for usada nesse repo — não precisa configurar à mão.
+
 ## Instalação
-
-As skills do Claude Code ficam globais quando colocadas em
-`~/.claude/skills/<nome-da-skill>/SKILL.md`. Os scripts abaixo criam um
-**link simbólico** de cada skill deste repo para lá (edite aqui, o efeito
-aparece em todos os projetos sem precisar reinstalar).
-
-### Windows (PowerShell)
 
 ```powershell
 .\install.ps1
 ```
 
-Criar link simbólico no Windows sem ser administrador exige o **Modo de
-Desenvolvedor** ativado (Configurações → Sistema → Para desenvolvedores). Se
-não estiver disponível, o script cai automaticamente para cópia de arquivos
-(nesse caso, rode o script de novo após alterar uma skill para propagar a
-mudança).
-
-### WSL / Linux / macOS (bash)
-
 ```bash
 ./install.sh
 ```
+
+O script cria **links simbólicos**:
+- de cada pasta em `skills/` para `~/.claude/skills/<nome>` (skills
+  disponíveis globalmente para o Claude Code);
+- de `spec_harness/` para `~/.claude/spec_harness` (motor usado pela skill
+  `spec-harness`).
+
+Editando aqui, o efeito aparece em todos os projetos sem precisar reinstalar.
+
+Criar link simbólico no Windows sem ser administrador exige o **Modo de
+Desenvolvedor** ativado (Configurações → Sistema → Para desenvolvedores). Se
+não estiver disponível, o script cai automaticamente para cópia de arquivos
+(nesse caso, rode o script de novo após alterar uma skill ou o motor para
+propagar a mudança).
 
 ## Adicionando uma nova skill
 

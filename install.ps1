@@ -1,46 +1,59 @@
 #requires -version 5
 <#
 .SYNOPSIS
-  Instala (via link simbolico) as skills deste repositorio em ~/.claude/skills,
-  tornando-as disponiveis globalmente para o Claude Code em qualquer projeto.
+  Instala (via link simbolico) as skills e o motor deste repositorio em ~/.claude,
+  tornando-os disponiveis globalmente para o Claude Code em qualquer projeto.
 #>
 
 $ErrorActionPreference = 'Stop'
 
-$repoSkillsDir = Join-Path $PSScriptRoot 'skills'
-$globalSkillsDir = Join-Path $HOME '.claude\skills'
+function Install-Link {
+    param(
+        [Parameter(Mandatory)] [string]$Source,
+        [Parameter(Mandatory)] [string]$Target,
+        [Parameter(Mandatory)] [string]$Label
+    )
 
-if (-not (Test-Path $globalSkillsDir)) {
-    New-Item -ItemType Directory -Path $globalSkillsDir -Force | Out-Null
-}
+    $targetParent = Split-Path -Parent $Target
+    if (-not (Test-Path $targetParent)) {
+        New-Item -ItemType Directory -Path $targetParent -Force | Out-Null
+    }
 
-$skills = Get-ChildItem -Path $repoSkillsDir -Directory
-
-foreach ($skill in $skills) {
-    $target = Join-Path $globalSkillsDir $skill.Name
-    $source = $skill.FullName
-
-    if (Test-Path $target) {
-        $existing = Get-Item $target -Force
-        $isOurLink = $existing.LinkType -and ($existing.Target -eq $source)
+    if (Test-Path $Target) {
+        $existing = Get-Item $Target -Force
+        $isOurLink = $existing.LinkType -and ($existing.Target -eq $Source)
         if ($isOurLink) {
-            Write-Host "OK (ja instalada) - $($skill.Name)"
-            continue
+            Write-Host "OK (ja instalada) - $Label"
+            return
         }
-        Write-Host "Substituindo instalacao existente de '$($skill.Name)'..."
-        Remove-Item $target -Recurse -Force
+        Write-Host "Substituindo instalacao existente de '$Label'..."
+        Remove-Item $Target -Recurse -Force
     }
 
     try {
-        New-Item -ItemType SymbolicLink -Path $target -Target $source | Out-Null
-        Write-Host "Link criado  - $($skill.Name)"
+        New-Item -ItemType SymbolicLink -Path $Target -Target $Source | Out-Null
+        Write-Host "Link criado  - $Label"
     }
     catch {
-        Write-Warning "Sem permissao para link simbolico (ative o Modo de Desenvolvedor para linkar em vez de copiar). Copiando arquivos para '$($skill.Name)'."
-        Copy-Item -Path $source -Destination $target -Recurse -Force
-        Write-Host "Copiada     - $($skill.Name)"
+        Write-Warning "Sem permissao para link simbolico (ative o Modo de Desenvolvedor para linkar em vez de copiar). Copiando arquivos para '$Label'."
+        Copy-Item -Path $Source -Destination $Target -Recurse -Force
+        Write-Host "Copiada     - $Label"
     }
 }
 
+# Skills -> ~/.claude/skills/<nome>
+$repoSkillsDir = Join-Path $PSScriptRoot 'skills'
+$globalSkillsDir = Join-Path $HOME '.claude\skills'
+foreach ($skill in Get-ChildItem -Path $repoSkillsDir -Directory) {
+    Install-Link -Source $skill.FullName -Target (Join-Path $globalSkillsDir $skill.Name) -Label $skill.Name
+}
+
+# Motor do spec-harness -> ~/.claude/spec_harness
+$repoEngineDir = Join-Path $PSScriptRoot 'spec_harness'
+if (Test-Path $repoEngineDir) {
+    $globalEngineDir = Join-Path $HOME '.claude\spec_harness'
+    Install-Link -Source $repoEngineDir -Target $globalEngineDir -Label 'spec_harness (motor)'
+}
+
 Write-Host ""
-Write-Host "Skills instaladas em: $globalSkillsDir"
+Write-Host "Instalado em: $globalSkillsDir e $(Join-Path $HOME '.claude\spec_harness')"

@@ -1,0 +1,5 @@
+# spec_harness/node_modules: só `yaml` é dependência de runtime e vai versionado, para o motor
+# funcionar sem `npm install` na máquina de quem instala. O resto (typescript, @types) é de
+# desenvolvimento — instale com `npm install` dentro de spec_harness/ se for mexer no harness.ts.
+spec_harness/node_modules/*
+!spec_harness/node_modules/yaml/

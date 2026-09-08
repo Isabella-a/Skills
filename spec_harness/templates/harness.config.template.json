@@ -1,0 +1,108 @@
+{
+  "schema_version": 2,
+  "_comment": "Template de perfil do SDD Spec Harness. Copiado para .claude/spec_harness/harness.config.json por `init-repo`. O motor é global (~/.claude/spec_harness) e não tem nada de stack hardcoded: é ESTE arquivo que adapta o harness ao repositório. Ajuste tudo marcado com TODO antes do primeiro autorun.",
+  "scaffold": {
+    "_comment": "Comando de teste que o scaffold-packet escreve no packet da spec. {test_paths} = os arquivos de teste da seção '## Arquivos permitidos'. TODO: ajuste ao runner deste repo (ex.: 'npm test -- {test_paths}', 'go test ./...', 'pytest -q {test_paths}'). O comando precisa falhar (exit != 0) quando o teste da fase RED falha, e não abortar na coleta.",
+    "test_command_template": "pytest -q --no-cov -p no:cacheprovider {test_paths} -m \"not llm_integration\""
+  },
+  "scopes": {
+    "_comment": "'app' do packet. Uma spec toca UM escopo. 'paths' = prefixos que o escopo pode ler/escrever; prefixos repetidos entre escopos são compartilhados e não geram erro de cruzamento. TODO: troque pelos escopos reais deste repo.",
+    "TODO_dominio": {
+      "paths": [
+        "src/TODO_dominio/",
+        "tests/"
+      ]
+    },
+    "TODO_shared": {
+      "paths": [
+        "src/shared/",
+        "tests/"
+      ]
+    }
+  },
+  "source_extensions": [
+    ".py"
+  ],
+  "test_markers": {
+    "_comment": "RED só pode escrever paths que casem com algum destes; GREEN não pode escrever nenhum deles.",
+    "patterns": [
+      "/tests/",
+      "/test_",
+      "test_",
+      "conftest.py",
+      "fixtures"
+    ]
+  },
+  "validators": {
+    "_comment": "Rodados no GREEN e no VERIFY sobre os arquivos alterados. {files} = lista de arquivos alterados (relativos à raiz), filtrada por source_extensions. Use null para desligar um validador que a base ainda não sustenta como gate.",
+    "lint": {
+      "id": "global_lint",
+      "run": "ruff check {files}"
+    },
+    "format": null,
+    "typecheck": null
+  },
+  "worktree": {
+    "_comment": "copy_paths traz para cada worktree o que não é versionado e o worktree precisa. .claude/settings.json é obrigatório: sem ele o hook PreToolUse não roda lá dentro e a sessão do autorun fica sem enforcement de path. TODO: acrescente .env e afins.",
+    "link_paths": [],
+    "copy_paths": [
+      ".claude/settings.json"
+    ]
+  },
+  "implementer": {
+    "_comment": "Sessões headless que implementam RED e GREEN dentro do worktree da spec, durante o autorun. O orquestrador não vê nada disso — só a linha de resultado por tentativa. A fase VERIFY não tem prompt de propósito: ela não escreve nada, e seus validadores são rodados pelo próprio harness.",
+    "model": "sonnet",
+    "timeout_ms": 2400000,
+    "permission_mode": "acceptEdits",
+    "allowed_tools": "Read Grep Glob Bash Write Edit TodoWrite",
+    "max_attempts": 2,
+    "_max_attempts_comment": "Tentativas por fase antes de devolver o controle ao orquestrador. A tentativa seguinte recebe os erros do gate como feedback, no lugar de {feedback}.",
+    "prompts": {
+      "red": "Você está implementando a fase {phase} da spec {spec} neste worktree ({worktree}), escopo {app}.\n\nLeia a spec inteira primeiro — ela é a fonte da verdade. Requisitos desta fase: {requirements}.\n\nVocê só pode LER:\n  - {read_paths}\n\nRegras invioláveis: as do CLAUDE.md/AGENTS.md na raiz deste repositório, incluindo a regra de dependências entre camadas.\n\nAmbiente: ative o ambiente do repositório antes de rodar os testes.\nComando de teste desta spec (use exatamente este): {test_command}\n\nNÃO commite, não crie branch, não rode git além de leitura. O harness commita a fase sozinho quando os gates passarem. Não escreva relatório nenhum: termine quando o comando de teste estiver no estado exigido abaixo.\n\nResultado da tentativa anterior desta fase:\n{feedback}\n\nFASE RED — escreva o teste que comprova a AUSÊNCIA do comportamento pedido pela spec.\n\nVocê só pode ESCREVER:\n  - {write_paths}\nNão toque em nenhum arquivo de produção: isso é a fase GREEN, e o gate reprova se você tocar.\n\nO teste tem de falhar pelo motivo certo. Em Python isso exige cuidado: um teste que importa um módulo inexistente no topo do arquivo quebra na COLETA (pytest sai 2), o que é indistinguível de um typo no import — e o gate recusa. Se o módulo/função ainda não existe, faça o import DENTRO do corpo do teste, para que a ausência vire uma falha de teste normal (exit 1). Se a spec altera comportamento de código que já existe, mantenha o import no topo e escreva o assert que falha.\n\nTermine quando `{test_command}` falhar exatamente pela ausência do comportamento — nunca por erro de sintaxe, fixture faltando ou import quebrado.",
+      "green": "Você está implementando a fase {phase} da spec {spec} neste worktree ({worktree}), escopo {app}.\n\nLeia a spec inteira primeiro — ela é a fonte da verdade. Requisitos desta fase: {requirements}.\n\nVocê só pode LER:\n  - {read_paths}\n\nRegras invioláveis: as do CLAUDE.md/AGENTS.md na raiz deste repositório, incluindo a regra de dependências entre camadas.\n\nAmbiente: ative o ambiente do repositório antes de rodar os testes.\nComando de teste desta spec (use exatamente este): {test_command}\n\nNÃO commite, não crie branch, não rode git além de leitura. O harness commita a fase sozinho quando os gates passarem. Não escreva relatório nenhum: termine quando o comando de teste estiver no estado exigido abaixo.\n\nResultado da tentativa anterior desta fase:\n{feedback}\n\nFASE GREEN — implemente o MÍNIMO de código de produção que faz o teste da fase RED passar.\n\nVocê só pode ESCREVER:\n  - {write_paths}\nNão altere nenhum arquivo de teste: o teste da fase RED é o contrato, e o gate reprova se você mexer nele. Se o teste parecer errado, pare e explique — não o edite.\n\nNão implemente nada além do que os requisitos desta fase pedem: escopo extra é reprovado pelo gate de paths e desperdiça a revisão.\n\nTermine quando `{test_command}` passar e o lint do repositório estiver limpo nos arquivos que você tocou."
+    }
+  },
+  "crap": {
+    "_comment": "Etapa determinística de risco rodada no VERIFY, depois do commit da fase e ANTES da revisão automática: pontua CRAP ((comp^2 * (1-cov)^3) + comp) só nas funções dos arquivos de PRODUÇÃO que a spec alterou. Nenhuma sessão de modelo. CRAP é gameável por teste sem assert, então aqui é sinal para o code review (via {crap_top}) e série histórica na evidência — nunca alvo de otimização de um agente. Requer `radon` e `pytest-cov` (ou equivalente que gere JSON do coverage.py) no ambiente que roda o harness; sem eles o passo fica inconclusivo, com aviso, e nunca aprova silenciosamente. Para desligar: enabled=false.",
+    "enabled": true,
+    "gate": "warn",
+    "_gate_comment": "warn = função acima do limiar entra na evidência e no prompt do code review. block = reprova o VERIFY.",
+    "threshold": 30,
+    "top_n": 5,
+    "tool": "tools/crap_calculator.py",
+    "python": "python",
+    "timeout_ms": 900000,
+    "coverage_command": "pytest -q -p no:cacheprovider --cov=. --cov-report=json:{coverage_json} --cov-fail-under=0 {test_targets}",
+    "_coverage_command_comment": "Roda no worktree da spec, herdando o ambiente da sessão. O denominador é a suíte do ESCOPO, não o test_command da spec: medir cobertura só pelos testes da spec inflaria o CRAP de código que a suíte já cobre. TODO: ajuste o comando ao runner deste repo (precisa de --cov e de um relatório JSON do coverage.py em {coverage_json}).",
+    "scope_tests": {
+      "_comment": "Alvos de pytest por escopo. Ausente = derivado dos scopes.paths (<prefixo>/tests quando existe, ou o próprio prefixo quando já é de teste)."
+    }
+  },
+  "post_verify": {
+    "_comment": "Roda automaticamente DEPOIS que a fase VERIFY passa nos gates e commita, UMA VEZ por spec: o marcador .post-verify.json no diretório de revisão impede que uma reverificação (ex.: retry do autorun) dispare tudo de novo. Para refazer de propósito: harness.ts post-verify <verify.yaml>.",
+    "enabled": true,
+    "model": "sonnet",
+    "timeout_ms": 2400000,
+    "permission_mode": "acceptEdits",
+    "allowed_tools": "Read Grep Glob Bash Write Edit TodoWrite",
+    "gate": "warn",
+    "_gate_comment": "warn = o resultado da revisão entra na evidência mas não reprova a fase. block = achado com blocking:true no code-review.json reprova o VERIFY.",
+    "require_quiz_pass": false,
+    "_require_quiz_pass_comment": "true = o merge automático da branch da spec exige .cognitive-loop/quiz/<sha-da-ponta-da-branch>.passed (a trava do /quizzes).",
+    "jobs": [
+      {
+        "id": "code_review",
+        "add_dirs": [],
+        "plugin_dirs": [],
+        "prompt": "Use a skill code-review-skill para revisar a implementação da spec {spec} (feature {feature}, spec {num}).\n\nDiff a revisar: `git diff {base}...{branch}` (rode você mesmo; a branch existe neste repositório).\nContexto obrigatório: leia {spec} inteira antes de revisar — a revisão é contra o que a spec pediu (RF/EC/T), não contra gosto pessoal.\nSinal de risco medido pelo harness (CRAP = complexidade² × (1-cobertura)³ + complexidade, calculado só nas funções que esta spec alterou):\n{crap_top}\nUse isso como PISTA, não como veredito: avalie se a complexidade se justifica pela spec e se a cobertura que falta é de caminho relevante. Nunca recomende teste sem assert só para baixar o número.\n\nSiga as regras invioláveis do CLAUDE.md/AGENTS.md na raiz deste repositório e a regra de dependências entre camadas.\n\nEscreva DOIS arquivos e nada mais:\n1. {out}/code-review.md — relatório em português, achados ordenados por severidade, cada um com arquivo:linha, o que quebra e a correção sugerida.\n2. {out}/code-review.json — JSON com o shape exato {{\"blocking\": <bool>, \"findings\": [{{\"severity\": \"critical|high|medium|low\", \"file\": \"...\", \"line\": <int>, \"summary\": \"...\", \"blocking\": <bool>}}]}}. blocking do topo = true se e somente se houver ao menos um finding com blocking true. Só marque blocking em defeito de correção, de segurança ou violação explícita da spec — não em preferência de estilo.\n\nNão altere nenhum arquivo de produção nem de teste. Não commite."
+      },
+      {
+        "id": "cognitive_loop",
+        "add_dirs": [],
+        "plugin_dirs": [],
+        "prompt": "TODO: este job exige o plugin cognitive-loop instalado (add_dirs/plugin_dirs). Rode a skill cognitive-loop:explain-diff sobre a mudança da spec {spec} (feature {feature}, spec {num}).\n\nDiff alvo: `git diff {base}...{branch}` — use exatamente esse range, não HEAD~1..HEAD.\nO loop completo é obrigatório nesta execução, nesta ordem:\n1. explain-diff — as 6 seções fixas, com repo-grounding real (leia os arquivos tocados inteiros, não só os hunks).\n2. cognitive-loop:micro-mundos — pelo menos UM micro mundo sobre a lógica mais difícil da mudança, embutido no explicador. Reutilize componente do catálogo; só crie componente novo com justificativa.\n3. cognitive-loop:quizzes — o quiz-trava sobre esta mudança, embutido no explicador.\n\nO sha desta mudança para efeito de nomeação e da trava do quiz é {head_sha} (ponta da branch da spec) — NÃO use `git rev-parse --short HEAD`, que aqui aponta para a branch de trabalho. Grave os artefatos em {out}/cognitive-loop/ (payload.json, explainer.html, explainer.md, quiz-payload.json, quiz.html e os micro mundos).\n\nNão altere nenhum arquivo de produção nem de teste. Não commite.",
+        "_comment": "Desligue removendo este job se o plugin cognitive-loop não estiver disponível nesta máquina/repositório."
+      }
+    ]
+  }
+}
