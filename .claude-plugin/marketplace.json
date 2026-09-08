@@ -10,11 +10,13 @@
     {
       "name": "claude-skills",
       "source": "./",
-      "description": "Referências de arquitetura (NestJS, monorepos), boas práticas React/Next.js e o fluxo sdd + spec-harness (specs testáveis com TDD e enforcement de path).",
-      "version": "1.0.0",
+      "description": "project-map mapeia o repositório para dar contexto real às demais: referências de arquitetura (NestJS, monorepos), boas práticas React/Next.js e o fluxo sdd + spec-harness (specs testáveis com TDD e enforcement de path).",
+      "version": "1.1.0",
       "category": "engineering",
       "keywords": [
         "skills",
+        "project-map",
+        "architecture",
         "nestjs",
         "react",
         "monorepo",

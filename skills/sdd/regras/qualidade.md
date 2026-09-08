@@ -4,7 +4,7 @@ Leia este arquivo antes de escrever qualquer spec. Violar uma regra é bloqueant
 design antes de continuar.
 
 As regras abaixo são **agnósticas de stack**. O que é específico do repositório (padrão de erro,
-transação, tipagem, níveis de teste obrigatórios) sai de `.claude/sdd/perfil.md` e do
+transação, tipagem, níveis de teste obrigatórios) sai de `PROJECT_MAP.md` e do
 `CLAUDE.md`/`AGENTS.md` — cite a regra de lá em vez de inventar uma.
 
 ---
@@ -31,7 +31,7 @@ transação, tipagem, níveis de teste obrigatórios) sai de `.claude/sdd/perfil
 | Contrato, entidade ou schema inventado sem exploração | Execute a Fase 1 e documente o shape real, com o caminho do arquivo onde ele está |
 | Fixture de teste com campos diferentes do contrato real | Nomes de campos idênticos ao contrato real — é o erro mais comum e o mais caro |
 | Casos de teste cobrindo apenas o caminho feliz | Cada unidade precisa de ao menos um caso de borda e um de falha |
-| Erro de negócio engolido por captura silenciosa | Siga o padrão de erro do repositório (perfil § Padrões obrigatórios). Captura vazia, ou que só loga e segue, é proibida |
+| Erro de negócio engolido por captura silenciosa | Siga o padrão de erro do repositório (`PROJECT_MAP.md § Convenções de código observadas`). Captura vazia, ou que só loga e segue, é proibida |
 | Efeito colateral no meio do fluxo transacional principal | Descreva o mecanismo que o repositório usa para isso (fila, evento, job) e mantenha fora da transação de escrita |
 | Operação que escreve em várias fontes sem declarar atomicidade | Declare explicitamente no contrato como a consistência é garantida |
 | Escape de tipagem proposto no contrato (`any`, ignore de type checker) | Proibido — proponha o tipo real, ou registre `⚠️ ABERTO:` |
@@ -64,12 +64,12 @@ transação, tipagem, níveis de teste obrigatórios) sai de `.claude/sdd/perfil
 ### Edge Cases
 - Todo EC tem trigger claro (o que provoca) e comportamento esperado claro (o que o sistema faz)
 - EC de "dependência externa indisponível" presente sempre que houver chamada externa — as
-  integrações recorrentes estão no perfil
+  integrações recorrentes estão em `PROJECT_MAP.md`
 - EC de "sem permissão" presente sempre que o alvo for protegido por controle de acesso
 
 ### Casos de Teste
 - Pelo menos um teste por RF **Must** e um por EC **Must**
-- Os níveis exigidos são os que `.claude/sdd/perfil.md § Testes` declara — inclusive o gatilho
+- Os níveis exigidos são os que `PROJECT_MAP.md § Testes` declara — inclusive o gatilho
   que torna o nível mais caro (integração, e2e) obrigatório
 - O teste assere o resultado, não a ausência de exceção: verifique o ramo de erro
   explicitamente, com o payload

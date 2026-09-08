@@ -71,7 +71,7 @@ campoC: <tipo> | null   // ex: 1234.56 — null quando <condição real>
 
 ## Arquitetura da Feature
 
-> Use as camadas que `.claude/sdd/perfil.md § Estrutura e fronteiras` declara. Uma linha por
+> Use as camadas que `PROJECT_MAP.md § Arquitetura e estrutura real` declara. Uma linha por
 > artefato que a feature cria ou altera.
 
 | Camada | Artefato | Caminho | Escopo |

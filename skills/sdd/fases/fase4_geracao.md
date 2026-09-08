@@ -30,7 +30,7 @@ pasta gerada aqui já nasce no lugar certo, sem passo de migração manual depoi
 Leia `templates/descricao_alto_nivel.md` e preencha com:
 - Objetivo e comportamento esperado da feature completa (o QUÊ, não o COMO)
 - Contratos/schemas reais da Fase 1 (DTOs, entidades, colunas de migration, resposta de API)
-- Arquitetura da feature nas camadas que o perfil do repositório declara
+- Arquitetura da feature nas camadas que `PROJECT_MAP.md` declara
 - Dependências e reutilização de helpers/hooks/componentes existentes (da Fase 2)
 - Open Questions ainda abertas
 - Campo **Ticket**: preencha com a chave (`ABC-1234`) se a Fase -1 buscou um ticket; remova a
@@ -56,7 +56,7 @@ Para cada spec validada na Fase 3:
 1. Leia `templates/spec.md`
 2. Leia `regras/qualidade.md` — aplique todas as regras antes de escrever
 3. Preencha o template com o conteúdo específico da spec, na notação e nos padrões que
-   `.claude/sdd/perfil.md` declara — inclusive a seção `## Arquivos permitidos`, que é o que o
+   `PROJECT_MAP.md` declara — inclusive a seção `## Arquivos permitidos`, que é o que o
    `spec-harness` lê para montar o packet
 4. Nomeie o arquivo com prefixo numérico: `01-`, `02-`, `03-`, ...
 

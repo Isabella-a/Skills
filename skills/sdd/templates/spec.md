@@ -83,7 +83,8 @@ um bullet por arquivo.
 > `Depende de`) em vez de ler a implementação inteira. Wrapper fino, sem lógica, não precisa
 > aparecer aqui.
 >
-> Use a **linguagem e o formato de assinatura do repositório** (ver `.claude/sdd/perfil.md`).
+> Use a **linguagem e o formato de assinatura do repositório** (ver `PROJECT_MAP.md § Stack &
+> runtime`).
 > Ao final do GREEN, atualize as assinaturas para o que foi realmente implementado e troque 🟡
 > por ✅.
 
@@ -120,13 +121,13 @@ código de saída de CLI, mensagem na fila de dead-letter>
 ## Casos de Teste Mínimos
 
 > Cada linha aqui é um teste que precisa existir **antes** do código (fase RED do
-> `spec-harness`). Os níveis obrigatórios vêm de `.claude/sdd/perfil.md § Testes`.
+> `spec-harness`). Os níveis obrigatórios vêm de `PROJECT_MAP.md § Testes`.
 
 | # | Alvo | Cenário | Fixture de entrada | Resultado esperado | Arquivo de teste |
 |---|------|---------|---------------------|---------------------|-------------------|
 | 🟡 T-01 | `<unidade>` | caminho feliz | `<fixture>` | `<saída esperada>` | `<caminho do teste>` |
 | 🟡 T-02 | `<unidade>` | <condição de erro> | `<fixture>` | `<erro esperado>` | `<caminho do teste>` |
-| 🟡 T-03 | `<unidade>` | <borda / integração, se o perfil exigir> | `<fixture>` | `<resultado>` | `<caminho do teste>` |
+| 🟡 T-03 | `<unidade>` | <borda / integração, se o `PROJECT_MAP.md` exigir> | `<fixture>` | `<resultado>` | `<caminho do teste>` |
 
 ### Shape das fixtures
 
@@ -148,7 +149,7 @@ código de saída de CLI, mensagem na fila de dead-letter>
 
 ## Checklist de Implementação
 
-> Os itens específicos de stack saem de `.claude/sdd/perfil.md § Padrões obrigatórios`.
+> Os itens específicos de stack saem de `PROJECT_MAP.md § Convenções de código observadas`.
 > Substitua os `<...>` na geração da spec — checklist genérico não é cobrado por ninguém.
 
 - [ ] 🟡 Antes de commitar: `git diff --stat` conferido contra **Arquivos permitidos**. Arquivo
@@ -176,7 +177,7 @@ código de saída de CLI, mensagem na fila de dead-letter>
 
 ## Aderência Arquitetural
 
-> Uma linha por regra que o repositório cobra (do `perfil.md` e do `CLAUDE.md`/`AGENTS.md`).
+> Uma linha por regra que o repositório cobra (do `PROJECT_MAP.md` e do `CLAUDE.md`/`AGENTS.md`).
 > Regra que não se aplica a esta spec: `N/A` com o motivo.
 
 | Regra | Status | Justificativa |

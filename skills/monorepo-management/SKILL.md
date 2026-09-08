@@ -7,6 +7,14 @@ description: Master monorepo management with Turborepo, Nx, and pnpm workspaces 
 
 Build efficient, scalable monorepos that enable code sharing, consistent tooling, and atomic changes across multiple packages and applications.
 
+## Before you start: check `PROJECT_MAP.md`
+
+If there's an existing repository, check for `PROJECT_MAP.md` at the root before recommending
+tools below: it already declares the monorepo tool, package manager, and workspace layout in use
+(§ Stack & runtime), so read it and align advice to that instead of defaulting to the
+recommendations here. If it's missing, ask the user whether to generate it first
+(`Skill(skill: "project-map")`) — otherwise proceed with the generic recommendations below.
+
 ## When to Use This Skill
 
 - Setting up new monorepo projects

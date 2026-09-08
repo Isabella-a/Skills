@@ -30,7 +30,7 @@ spec-01 (migration + entidade)   ──► spec-02 (endpoint de criação)
 ## Critério de Conclusão da Feature
 
 ```bash
-# Comandos reais deste repositório — copie de `.claude/sdd/perfil.md § Stack e ferramentas`
+# Comandos reais deste repositório — copie de `PROJECT_MAP.md § Stack & runtime`
 # (build, lint, type-check e testes). Não invente comando que ninguém roda aqui.
 <comando de build>
 <comando de lint>

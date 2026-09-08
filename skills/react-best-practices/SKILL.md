@@ -11,6 +11,17 @@ metadata:
 
 Comprehensive performance optimization guide for React and Next.js applications, maintained by Vercel. Contains 57 rules across 8 categories, prioritized by impact to guide automated refactoring and code generation.
 
+## Before you start: check `PROJECT_MAP.md`
+
+Check for `PROJECT_MAP.md` at the repo root before applying rules below:
+
+- **Exists:** read its Frameworks/bibliotecas-chave and Estilos e design system sections — data
+  fetching library, styling methodology, component library already in use — and adapt examples
+  to match instead of suggesting something the repo doesn't use (e.g. don't recommend Tailwind
+  classes in a CSS Modules project).
+- **Missing:** ask the user if they want to generate it first (`Skill(skill: "project-map")`) —
+  otherwise proceed with generic advice below.
+
 ## When to Apply
 
 Reference these guidelines when:
