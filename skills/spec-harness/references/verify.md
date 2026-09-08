@@ -67,8 +67,10 @@ você.
 
 Ao passar os gates, a fase VERIFY commita e o harness dispara em paralelo, em **sonnet**, uma
 única vez por spec (marcador `.post-verify.json`; um retry do autorun não redispara),
-os jobs de `post_verify` da config: `code-review-skill` e `cognitive-loop:explain-diff`
-(que encadeia micro mundos e o quiz-trava). Ver `SKILL.md#revisão-automática-pós-verify`.
+os jobs de `post_verify` da config: `mattpocock-skills:code-review` e `ponytail:ponytail-review`
+(ambos dependências do plugin `claude-skills`) e, se configurado, `cognitive-loop:explain-diff`
+(que encadeia micro mundos e o quiz-trava — não é dependência deste plugin). Ver
+`SKILL.md#revisão-automática-pós-verify`.
 
 O que olhar antes de continuar:
 
@@ -76,8 +78,9 @@ O que olhar antes de continuar:
 |---|---|
 | `.specs/sdd-<feature>/reviews/<NN>/code-review.md` | achados por severidade, com arquivo:linha |
 | `.../code-review.json` | veredito estruturado (`blocking`), lido pelo gate |
-| `.../cognitive-loop/explainer.html` | o explicador da mudança + micro mundo(s) + quiz embutido |
-| `.../code_review.log`, `.../cognitive_loop.log` | a sessão crua de cada agente, quando algo saiu errado |
+| `.../ponytail-review.md` | achados de over-engineering (dependência/abstração desnecessária) |
+| `.../cognitive-loop/explainer.html` | quando configurado: o explicador da mudança + micro mundo(s) + quiz embutido |
+| `.../code_review.log`, `.../ponytail_review.log`, `.../cognitive_loop.log` | a sessão crua de cada agente, quando algo saiu errado |
 | `.evidence.json` → `post_verify` | exit code, diretório e nº de achados bloqueantes de cada job |
 | `.../crap.json`, `.evidence.json` → `crap` | complexidade × cobertura das funções alteradas |
 
@@ -115,9 +118,10 @@ O verifier ainda deve conferir os campos de `manual_review` da evidência:
 
 - `contract.must`;
 - `contract.must_not`;
-- `forbidden.behaviors` (ex.: `except Exception` antes das exceções específicas, `print()` em vez
-  de `logger`, acesso a Redis fora do `StateManager`, import cruzando domínios, credencial fora
-  de `get_secret_value()`);
+- `forbidden.behaviors` (ex.: captura de exceção genérica antes das específicas, log via `print`/
+  `console.log` em vez do logger do repo, import cruzando domínios, credencial fora do cofre de
+  segredos do repo, ou apagar um comentário `ponytail:` só para satisfazer um gate — a marcação
+  existe justamente para não se perder);
 - `review.focus`.
 
 `status: ready_for_review` não significa aprovação final. Significa que os

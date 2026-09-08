@@ -20,12 +20,17 @@ particular, ela deve viver no `.claude/skills/` daquele repositório, não aqui.
 Dentro do Claude Code, em qualquer repositório:
 
 ```
+/plugin marketplace add anthropics/claude-plugins-official
+/plugin marketplace add DietrichGebert/ponytail
 /plugin marketplace add Isabella-a/Skills
 /plugin install claude-skills@isabella-a
 ```
 
 Não é preciso `git clone` nem rodar nenhum script — o Claude Code busca e mantém o plugin
-atualizado sozinho.
+atualizado sozinho. As duas primeiras marketplaces são de dependências do `spec-harness`
+(`mattpocock-skills` e `ponytail` — ver detalhe abaixo); sem elas adicionadas antes, o `/plugin
+install` ainda funciona, mas o plugin fica com status "failed to load" até você rodar os dois
+primeiros comandos.
 
 ### Verificando a instalação
 
@@ -57,11 +62,18 @@ execução em um repositório novo, elas se auto-configuram:
 2. `spec-harness` roda `init-repo` / `doctor` para gerar `.claude/spec_harness/harness.config.json`
    e registrar o hook de enforcement de path — nada disso precisa ser configurado manualmente.
 
-Dependências externas a este plugin (ambas opcionais, mas usadas se disponíveis):
+Este plugin declara duas dependências reais (`.claude-plugin/plugin.json`), instaladas junto com
+`claude-skills` desde que as marketplaces delas já tenham sido adicionadas (ver Instalação
+acima):
 
-- skill `grilling` (plugin `mattpocock-skills`) — entrevista o usuário antes de gerar a spec.
-- skill/MCP de rastreador de issues (Jira, GitHub Issues etc.) — para resolver um ticket por
-  chave ou link.
+- **`mattpocock-skills`** — fornece `grilling` (entrevista o usuário antes de gerar a spec, usada
+  pela Fase -1 da `sdd`) e `code-review` (job automático `code_review` do `spec-harness` pós-VERIFY).
+- **`ponytail`** — fornece `ponytail-review` (job automático `ponytail_review`, revisão focada em
+  over-engineering) e `ponytail-debt` (consolidar em ledger os comentários `ponytail:` deixados
+  como atalho deliberado, sugerida ao final de uma feature).
+
+Além dessas, uma opcional e não gerenciada por este plugin: skill/MCP de rastreador de issues
+(Jira, GitHub Issues etc.), para a `sdd` resolver um ticket por chave ou link.
 
 ## Atualizando
 

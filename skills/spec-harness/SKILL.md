@@ -163,8 +163,18 @@ tarefa. Detalhes e casos inconclusivos em `references/verify.md#crap-fase-verify
 ## Revisão automática pós-VERIFY
 
 Quando a fase VERIFY passa e commita, o harness dispara em paralelo, em sonnet, os jobs de
-`post_verify` da config: `code-review-skill` e `cognitive-loop:explain-diff` (que encadeia micro
-mundos e o quiz-trava). Artefatos em `.specs/sdd-<feature>/reviews/<NN>/`.
+`post_verify` da config. No template deste plugin vêm três:
+
+- **`code_review`** (`mattpocock-skills:code-review`) — revisão geral contra CLAUDE.md/AGENTS.md,
+  bugs e o sinal de CRAP.
+- **`ponytail_review`** (`ponytail:ponytail-review`) — passada extra focada só em
+  over-engineering (dependência desnecessária, abstração especulativa, flexibilidade morta).
+- **`cognitive_loop`** (`cognitive-loop:explain-diff`, que encadeia micro mundos e o quiz-trava) —
+  **não** é dependência deste plugin; remova o job do `harness.config.json` se não tiver esse
+  plugin instalado.
+
+`mattpocock-skills` e `ponytail` são dependências do plugin `claude-skills` — instalados junto
+com ele, sem passo extra. Artefatos de cada job em `.specs/sdd-<feature>/reviews/<NN>/`.
 
 Roda **uma vez por spec**: o marcador `.post-verify.json` no diretório de revisão impede que uma
 reverificação (um retry do autorun, um `verify-packet` manual) dispare tudo de novo. Para refazer
@@ -174,6 +184,14 @@ de propósito: `node $HARNESS post-verify .specs/sdd-<feature>/packets/.expanded
 `post_verify.gate: "block"`, um achado `blocking: true` grava `status: review_blocked` e o merge
 não acontece. Com `require_quiz_pass: true`, o merge exige o quiz gabaritado
 (`.cognitive-loop/quiz/<sha-da-ponta-da-branch>.passed`).
+
+## Ponytail-debt ao final da feature
+
+Quando todas as specs da feature já estiverem mergeadas, rode a skill `ponytail:ponytail-debt`
+sobre o repositório para consolidar num único ledger os comentários `ponytail:` deixados como
+atalho deliberado durante alguma fase GREEN — em vez de deixá-los se perder na branch. Peça para
+persistir o resultado em `.specs/sdd-<feature>/feedback.md` e revise cada item antes de considerar
+a feature encerrada.
 
 ## Revisão semântica e merge
 

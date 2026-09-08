@@ -5,6 +5,7 @@
     "url": "https://github.com/Isabella-a"
   },
   "description": "Skills genéricas do Claude Code para uso em qualquer repositório.",
+  "allowCrossMarketplaceDependenciesOn": ["claude-plugins-official", "ponytail"],
   "plugins": [
     {
       "name": "claude-skills",
