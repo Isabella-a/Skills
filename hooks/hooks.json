@@ -1,0 +1,17 @@
+{
+  "description": "Path scoping das specs do spec-harness: bloqueia leitura/escrita fora de capabilities.*.paths enquanto uma fase de spec está aberta.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/spec_harness/hook-guard.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

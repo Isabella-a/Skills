@@ -1,0 +1,11 @@
+{
+  "name": "claude-skills",
+  "description": "Coleção de skills genéricas do Claude Code: referências de arquitetura (NestJS modular monolith, monorepos), boas práticas React/Next.js, e o fluxo sdd + spec-harness para quebrar entregas em specs testáveis e implementá-las com TDD e enforcement de path.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Isabella Antunes",
+    "url": "https://github.com/Isabella-a"
+  },
+  "homepage": "https://github.com/Isabella-a/Skills",
+  "repository": "https://github.com/Isabella-a/Skills"
+}

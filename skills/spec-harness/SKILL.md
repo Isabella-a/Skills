@@ -1,6 +1,6 @@
 ---
 name: spec-harness
-description: Executa specs Markdown produzidas pela skill SDD em qualquer repositório. Um packet unificado por spec, gerado a partir da própria spec, e um único comando (autorun) que encadeia RED→GREEN→VERIFY em subagentes sonnet sem devolver o controle entre as fases. O motor é global (~/.claude/spec_harness) e o perfil (escopos, validadores, comando de teste) vem do .claude/spec_harness/harness.config.json do repo. Use depois que a pasta SDD da feature já existir (.specs/sdd-<feature>/).
+description: Executa specs Markdown produzidas pela skill SDD em qualquer repositório. Um packet unificado por spec, gerado a partir da própria spec, e um único comando (autorun) que encadeia RED→GREEN→VERIFY em subagentes sonnet sem devolver o controle entre as fases. O motor é global — instalado como plugin do Claude Code ou manualmente em ~/.claude/spec_harness — e o perfil (escopos, validadores, comando de teste) vem do .claude/spec_harness/harness.config.json do repo. Use depois que a pasta SDD da feature já existir (.specs/sdd-<feature>/).
 allowed-tools: [Read, Glob, Grep, Bash, Write, Edit]
 ---
 
@@ -14,22 +14,26 @@ Se a pasta `.specs/sdd-<feature>/` ainda não existir, não improvise um packet:
 primeiro. E se `.claude/sdd/perfil.md` existir, leia-o — ele descreve as camadas e os padrões do
 repositório que os prompts de RED e GREEN vão cobrar.
 
-Ambiente: ative o ambiente do repositório (ver `CLAUDE.md`/`AGENTS.md` dele) antes de qualquer
-teste ou lint — o harness herda o ambiente da sessão que o invoca. Em
-`dados-one-assistant`, isso é `conda activate one-assistant`.
+Ambiente: ative o ambiente do repositório (venv/conda, nvm, etc. — ver `CLAUDE.md`/`AGENTS.md`
+dele) antes de qualquer teste ou lint; o harness herda o ambiente da sessão que o invoca.
 
 ## Instalação num repositório — você faz, não o usuário
 
-O motor vive em `~/.claude/spec_harness/` e serve todos os repositórios. Do repo são só duas
-coisas, versionadas com ele: `.claude/spec_harness/harness.config.json` (o perfil) e o hook
-`PreToolUse` em `.claude/settings.json` (sem ele não há enforcement de path dentro dos worktrees).
+O motor serve todos os repositórios a partir de uma instalação global — como plugin do Claude
+Code (`$CLAUDE_PLUGIN_ROOT/spec_harness/harness.ts`) ou instalado manualmente em
+`~/.claude/spec_harness/harness.ts`. Antes de rodar qualquer comando abaixo, resolva qual dos dois
+se aplica (teste se a variável de ambiente `CLAUDE_PLUGIN_ROOT` está definida) e use esse caminho —
+os exemplos abaixo chamam esse arquivo de `$HARNESS`. Do repo são só duas coisas, versionadas com
+ele: `.claude/spec_harness/harness.config.json` (o perfil) e o hook `PreToolUse` em
+`.claude/settings.json` (sem ele não há enforcement de path dentro dos worktrees — quando o motor
+está instalado como plugin, esse hook já vem do próprio plugin e não precisa ser registrado aqui).
 
 Quando a skill for usada num repo que ainda não tem perfil, **conclua a instalação você mesmo**,
 neste loop:
 
 ~~~bash
-node ~/.claude/spec_harness/harness.ts init-repo     # detecta e escreve; já roda o doctor no fim
-node ~/.claude/spec_harness/harness.ts doctor        # --json para consumir a lista programaticamente
+node $HARNESS init-repo     # detecta e escreve; já roda o doctor no fim
+node $HARNESS doctor        # --json para consumir a lista programaticamente
 ~~~
 
 `init-repo` **detecta** linguagem, extensões, marcadores de teste, comando de teste (lendo
@@ -64,11 +68,11 @@ então rode o primeiro `scaffold-packet`.
 ## O ciclo (três comandos por spec)
 
 ~~~bash
-node ~/.claude/spec_harness/harness.ts scaffold-packet .specs/sdd-<feature>/specs/NN-<spec>.md
+node $HARNESS scaffold-packet .specs/sdd-<feature>/specs/NN-<spec>.md
 # revise os campos apontados na saída, então:
-node ~/.claude/spec_harness/harness.ts autorun .specs/sdd-<feature>/packets/SDD-NN.yaml --no-merge
+node $HARNESS autorun .specs/sdd-<feature>/packets/SDD-NN.yaml --no-merge
 # revisão semântica (references/verify.md), e só então:
-node ~/.claude/spec_harness/harness.ts merge-spec .specs/sdd-<feature>/packets/SDD-NN.yaml
+node $HARNESS merge-spec .specs/sdd-<feature>/packets/SDD-NN.yaml
 ~~~
 
 `autorun` roda **RED → GREEN → VERIFY numa invocação só**. Cada fase é uma sessão headless
@@ -93,7 +97,7 @@ cada fase é gravada. Não edite os expandidos.
 
 | Campo | O que é |
 |---|---|
-| `app` | escopo único da spec: `assistente`, `batimentos`, `ata_agente`, `faq_backoffice` ou `shared` |
+| `app` | escopo único da spec, entre os declarados em `scopes` do `harness.config.json` deste repo |
 | `test_paths` | o que a fase RED pode escrever |
 | `impl_paths` | o que a fase GREEN pode escrever (VERIFY não escreve nada) |
 | `context_paths` | leitura extra além da spec, dos testes e da produção — só o necessário |
@@ -128,7 +132,7 @@ travestido de RED.
 O `addopts` do `pytest.ini` inclui `--cov-fail-under=80` medindo `app/` inteiro: qualquer
 execução escopada a um arquivo reprova por cobertura mesmo com todos os testes verdes. Por isso
 o `test_command` gerado sempre traz `--no-cov -p no:cacheprovider`. A cobertura de verdade é da
-suíte completa no CI (`.github/workflows/automated_tests.yaml`), não do gate por spec.
+suíte completa no CI do repositório, não do gate por spec.
 
 ## Quando o autorun para
 
@@ -164,7 +168,7 @@ mundos e o quiz-trava). Artefatos em `.specs/sdd-<feature>/reviews/<NN>/`.
 
 Roda **uma vez por spec**: o marcador `.post-verify.json` no diretório de revisão impede que uma
 reverificação (um retry do autorun, um `verify-packet` manual) dispare tudo de novo. Para refazer
-de propósito: `node ~/.claude/spec_harness/harness.ts post-verify .specs/sdd-<feature>/packets/.expanded/SDD-NN-verify.yaml`.
+de propósito: `node $HARNESS post-verify .specs/sdd-<feature>/packets/.expanded/SDD-NN-verify.yaml`.
 
 `code-review.json` ausente é revisão **inconclusiva**, nunca aprovação. Com
 `post_verify.gate: "block"`, um achado `blocking: true` grava `status: review_blocked` e o merge
@@ -184,14 +188,15 @@ contrário, `--no-merge` + `merge-spec`.
 ## Path scoping
 
 Uma spec toca **um escopo**. Uma mudança que atravessa domínios é mais de uma spec — é a regra
-de dependências inviolável do `CLAUDE.md` (`NUNCA: domínio A → domínio B`,
-`NUNCA: shared/ → plataformas/`) aplicada ao packet. O hook `PreToolUse` bloqueia leitura e
-escrita fora dos paths declarados enquanto a sessão da fase roda, e `verify-packet` recusa
-qualquer arquivo alterado fora de `capabilities.write.paths`.
+de dependências entre camadas do `CLAUDE.md`/`AGENTS.md` do repositório (ex.: `NUNCA: domínio A →
+domínio B`) aplicada ao packet. O hook `PreToolUse` bloqueia leitura e escrita fora dos paths
+declarados enquanto a sessão da fase roda, e `verify-packet` recusa qualquer arquivo alterado fora
+de `capabilities.write.paths`.
 
 Quando um tipo/DTO serve a mais de um domínio, ele não é redigitado em cada um: vira uma spec
-própria escopada em `app/shared/models/**`, e as specs dependentes declaram `Depende de` no
-cabeçalho e leem a seção `## Contratos` dela — nunca os arquivos de produção uma da outra.
+própria escopada no escopo `shared` (ver `scopes` do `harness.config.json`), e as specs
+dependentes declaram `Depende de` no cabeçalho e leem a seção `## Contratos` dela — nunca os
+arquivos de produção uma da outra.
 
 ## Perfil do repositório — `harness.config.json`
 
@@ -204,13 +209,11 @@ Caminhos de ferramenta na config (ex.: `crap.tool: tools/crap_calculator.py`) re
 contra o motor global e só depois contra o repo — assim um repo pode sobrescrever uma ferramenta
 sem alterar o motor. `SPEC_HARNESS_CONFIG` aponta para outra config, útil para smoke tests.
 
-O que segue é o perfil de `dados-one-assistant`, como exemplo de decisão de gate:
-
-**Por que `typecheck: null`:** `mypy` acusa 352 erros pré-existentes em 42 arquivos e leva mais
-de dois minutos — como gate por fase, reprovaria specs por dívida alheia. **Por que
-`format: null`:** `app/shared/` tem 17 de 48 arquivos fora do `ruff format`, e tocar um arquivo
-legado obrigaria a reformatá-lo inteiro, inflando o diff para além dos Arquivos permitidos.
-Ambos viram gate no dia em que a base ficar limpa.
+Exemplo de critério para decidir um gate: se o type-checker ou o formatter do repositório acusa
+um volume grande de erros/divergências pré-existentes (dívida técnica alheia à spec) ou leva tempo
+demais para rodar por fase, prefira `null` documentando o motivo num `_comment` — e volte a ligar
+o gate quando a base estiver limpa o bastante para não reprovar specs por problemas que elas não
+criaram.
 
 A fase VERIFY não tem prompt de implementador de propósito: ela não escreve nada, e seus
 validadores são rodados pelo próprio harness — uma sessão ali só gastaria tokens para observar
