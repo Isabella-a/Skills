@@ -8,6 +8,39 @@
 >
 > Regra de ouro: o que já está no `CLAUDE.md`/`AGENTS.md` não é copiado aqui — é referenciado.
 
+## 0. Índice de leitura por escopo
+
+> **Leia esta seção antes do resto do arquivo.** Ela existe para você não precisar abrir o
+> documento inteiro em cada tarefa — leia só as seções que o seu escopo exige.
+>
+> Para achar a linha de cada seção sem abrir o arquivo inteiro:
+> `grep -n '^## ' PROJECT_MAP.md`
+> Depois leia só o intervalo da seção que interessa (da linha do `## N.` até a linha do próximo
+> `## `) com `Read(offset=<linha>, limit=<até o próximo cabeçalho>)`. Não leia o arquivo inteiro
+> só porque uma tarefa precisa de uma seção.
+
+| Seção | Leia quando a tarefa... |
+|---|---|
+| §1 Identidade & propósito | Sempre — única leitura obrigatória em qualquer tarefa. |
+| §2 Stack & runtime | Toca código: precisa saber linguagem, runtime ou gerenciador de pacotes. |
+| §3 Frameworks e bibliotecas-chave | Usa ou altera uma camada específica (dados, estado, validação, auth, filas, testes). |
+| §4 Arquitetura e estrutura real | Cria/move/localiza um arquivo, ou precisa saber onde algo vive ou qual dependência é proibida. |
+| §5 Estilos e design system | Toca frontend/UI. Pule em tarefa 100% backend. |
+| §6 Testes | Escreve ou roda teste. |
+| §7 Ambiente local e execução | Precisa rodar o projeto localmente ou depende de serviço local (docker-compose etc.). |
+| §8 CI/CD e deploy | Toca pipeline, ou precisa saber o que bloqueia um PR. |
+| §9 Segurança e configuração | Envolve secret, autenticação/autorização ou configuração sensível. |
+| §10 Observability e feature flags | Envolve log, tracing ou feature flag. |
+| §11 Convenções de código observadas | Vai escrever código novo — quase sempre relevante antes de codar. |
+| §12 Integrações externas recorrentes | Toca um serviço externo (pagamento, e-mail, storage, fila) — confira antes de reimplementar um client. |
+| §13 Fluxo de trabalho | Abre PR/branch/issue e precisa da convenção de branch/commit ou do rastreador. |
+
+> **Monorepo:** as tabelas de §2-4 têm uma linha por workspace. Leia só a(s) linha(s) do
+> workspace que a tarefa toca — não precisa das linhas dos outros workspaces.
+>
+> **Seções não se aplicam neste repositório:** <lista gerada no Passo 6, ex.: "§5, §10" — ou
+> omita esta linha se todas as seções tiverem conteúdo real>. Pule-as sem abrir.
+
 ## 1. Identidade & propósito
 
 - **Projeto:** <nome — o que ele faz, em uma frase>

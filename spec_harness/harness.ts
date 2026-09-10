@@ -55,7 +55,10 @@ const USAGE = `Subcomandos:
     verify-packet <packet.yaml>
     run-spec <red.yaml> <green.yaml> <verify.yaml>   (modo manual, uma fase por invocação)
     run-parallel <red1> <green1> <verify1> -- <red2> <green2> <verify2> [-- ...] [--force]
-    post-verify <verify.yaml>        (reexecuta a revisão automática de uma fase já verificada)
+    post-verify <verify.yaml>        (reexecuta a revisão automática de UMA spec — uso manual, não roda no autorun)
+    review-feature <feature> --base <ref> [--branch <ref>] [--force]
+                                     (code_review/ponytail_review sobre o diff acumulado da feature,
+                                      depois que todas as specs já foram mergeadas)
     discard-spec-worktree <worktree_path> [--delete-branch]
     hook-check                       (uso interno — chamado pelo hook PreToolUse)`;
 
@@ -202,7 +205,9 @@ interface CrapConfig {
   threshold?: number;
   top_n?: number;
   tool?: string;
+  runtime?: "python" | "node";
   python?: string;
+  node?: string;
   coverage_command?: string;
   timeout_ms?: number;
   scope_tests?: Record<string, string[]>;
@@ -1005,9 +1010,11 @@ async function verifyPacket(origArg: string, quiet = false): Promise<VerifyOutco
     if (!quiet) console.log(`Commit criado na branch ${run.branch}.`);
   }
 
-  // CRAP e revisão automática só fazem sentido sobre a spec inteira já commitada — por isso
-  // rodam depois do commit da fase VERIFY, não a cada fase. O CRAP vem primeiro: seu relatório
-  // é insumo do prompt do code review.
+  // CRAP só faz sentido sobre a spec inteira já commitada — por isso roda depois do commit da
+  // fase VERIFY, não a cada fase. A revisão automática (code_review/ponytail_review) NÃO roda
+  // mais aqui: ela é cara demais para repetir a cada spec (uma sessão sonnet completa por job,
+  // lendo o diff/spec de novo em cada uma) e passou a rodar uma vez por FEATURE, depois que
+  // todas as specs já foram mergeadas — ver `review-feature` e `SKILL.md § Revisão automática`.
   if (packet.phase === "verify") {
     const extra: Record<string, unknown> = {};
     const extraErrors: string[] = [];
@@ -1017,18 +1024,6 @@ async function verifyPacket(origArg: string, quiet = false): Promise<VerifyOutco
     if (crap) {
       extra.crap = crap.summary;
       extraErrors.push(...crap.errors);
-    }
-
-    if (postVerifyConfig().enabled) {
-      const { results, errors: reviewErrors } = await runPostVerify(packet, run);
-      extra.post_verify = {
-        model: postVerifyConfig().model ?? "sonnet",
-        gate: postVerifyConfig().gate ?? "warn",
-        review_dir: path.relative(REPO_ROOT, reviewDir),
-        results,
-        errors: reviewErrors,
-      };
-      extraErrors.push(...reviewErrors);
     }
 
     if (Object.keys(extra).length) {
@@ -1212,10 +1207,15 @@ function runCrapStep(
     return { summary, errors };
   }
 
-  const python = cfg.python ?? "python";
+  // "runtime" escolhe o interpretador que roda a ferramenta (não a stack analisada, que vem de
+  // --source-dir): python para tools/crap_calculator.py (radon), node para
+  // tools/crap_calculator.ts (eslintcc). Ambos recebem os mesmos flags — o shape de saída é
+  // idêntico, então o resto do harness (readCrapReport, crapTopText) não diferencia stack.
+  const runtime = cfg.runtime ?? "python";
+  const interpreter = runtime === "node" ? (cfg.node ?? "node") : (cfg.python ?? "python");
   const tool = resolveEnginePath(cfg.tool!);
   const toolCmd =
-    `${python} ${JSON.stringify(tool)} --coverage-json ${JSON.stringify(coverageJson)} ` +
+    `${interpreter} ${JSON.stringify(tool)} --coverage-json ${JSON.stringify(coverageJson)} ` +
     `--source-dir ${JSON.stringify(run.worktree)} --only-from ${JSON.stringify(listFile)} ` +
     `--threshold ${threshold} --json-out ${JSON.stringify(crapJson)}`;
   const toolRun = runCmd(toolCmd, run.worktree, cfg.timeout_ms ?? 900_000);
@@ -1453,6 +1453,147 @@ async function cmdPostVerify(args: string[]): Promise<void> {
   if (!run) die("não há execução ativa para esta spec — rode run-spec/open-packet antes.");
   // Invocação explícita é sempre refazimento: ignora o marcador.
   const { errors } = await runPostVerify(packet, run, true);
+  if (errors.length) {
+    for (const e of errors) console.error(`  - ${e}`);
+    process.exit(1);
+  }
+}
+
+// --------------------------------------------------------------------------- review-feature
+
+// Agrega o CRAP de todas as specs já revisadas da feature (uma pasta reviews/<NN>/crap.json por
+// spec) num único top-N para o prompt da revisão por feature. Specs sem crap.json (CRAP
+// desligado, ou spec sem cobertura configurada) são ignoradas, não tratadas como erro.
+function crapTopTextForFeature(featureDir: string, topN: number): string {
+  const reviewsDir = path.join(featureDir, "reviews");
+  if (!fs.existsSync(reviewsDir)) {
+    return "(sem relatório de CRAP nesta feature — ignore este critério)";
+  }
+  const all: Array<CrapFunction & { spec: string }> = [];
+  for (const entry of fs.readdirSync(reviewsDir)) {
+    if (entry === "feature") continue;
+    const report = readCrapReport(path.join(reviewsDir, entry));
+    for (const fn of report?.high_risk_functions ?? []) all.push({ ...fn, spec: entry });
+  }
+  if (!all.length) {
+    return "(nenhuma função acima do limiar de CRAP em nenhuma spec já revisada desta feature)";
+  }
+  return all
+    .sort((a, b) => b.crap - a.crap)
+    .slice(0, topN)
+    .map(
+      (f) =>
+        `- [spec ${f.spec}] ${f.file} -> ${f.name}() — CRAP ${f.crap.toFixed(2)} (complexidade ${f.comp}, cobertura ${f.cov.toFixed(1)}%)`
+    )
+    .join("\n");
+}
+
+// Revisão automática por FEATURE, não por spec: code_review/ponytail_review rodam UMA vez sobre
+// o diff acumulado de todas as specs já mergeadas na branch de trabalho, em vez de repetir os
+// mesmos jobs (cada um uma sessão sonnet completa, lendo diff+spec do zero) a cada spec — que é
+// o que fazia a revisão automática ser o maior custo repetido do autorun. Diferença central em
+// relação a runPostVerify: aqui as specs já foram mergeadas, então "gate: block" não impede
+// merge nenhum — é sinal para quem orquestra revisar, não enforcement.
+async function runFeatureReview(
+  feature: string,
+  base: string,
+  branch: string,
+  force: boolean
+): Promise<{ results: PostVerifyResult[]; errors: string[]; reviewDir: string }> {
+  const cfg = postVerifyConfig();
+  const jobs = (cfg.jobs ?? []).filter((j) => j && j.id && j.prompt);
+  const featureDir = path.join(REPO_ROOT, ".specs", `sdd-${feature}`);
+  const reviewDir = path.join(featureDir, "reviews", "feature");
+  if (!cfg.enabled || !jobs.length) return { results: [], errors: [], reviewDir };
+
+  const marker = postVerifyMarker(reviewDir);
+  const headSha = gitOut(["rev-parse", "--short", branch]);
+  if (!force && fs.existsSync(marker)) {
+    const previous = JSON.parse(fs.readFileSync(marker, "utf-8")) as {
+      results?: PostVerifyResult[];
+      errors?: string[];
+      head_sha?: string;
+    };
+    if (previous.head_sha === headSha) {
+      console.log(
+        `  revisão da feature já executada neste head (${headSha}) — reaproveitando ` +
+          `${path.relative(REPO_ROOT, reviewDir)}/. Para refazer: --force.`
+      );
+      return { results: previous.results ?? [], errors: previous.errors ?? [], reviewDir };
+    }
+  }
+
+  fs.mkdirSync(reviewDir, { recursive: true });
+  const vars: Record<string, string> = {
+    feature,
+    branch,
+    base,
+    head_sha: headSha,
+    out: path.relative(REPO_ROOT, reviewDir),
+    crap_top: crapTopTextForFeature(featureDir, crapConfig().top_n ?? 5),
+  };
+
+  console.log(
+    `\nRevisão automática por feature (${cfg.model ?? "sonnet"}, ${jobs.length} agentes em paralelo): ` +
+      `${jobs.map((j) => j.id).join(", ")}`
+  );
+  console.log(`  diff revisado: git diff ${base}...${branch}`);
+  console.log(`  artefatos em: ${vars.out}/`);
+
+  const results = await Promise.all(
+    jobs.map((job) => runClaudeJob(job, vars, cfg, path.join(reviewDir, `${job.id}.log`)))
+  );
+
+  const errors: string[] = [];
+  const verdict = readReviewVerdict(reviewDir);
+  for (const r of results) {
+    if (r.id === "code_review") r.blocking_findings = verdict.blocking;
+    if (r.returncode !== 0) {
+      const msg = `agente '${r.id}' terminou com exit ${r.returncode} — ver ${r.log}`;
+      if ((cfg.gate ?? "warn") === "block") errors.push(msg);
+      else console.log(`  AVISO: ${msg}`);
+    }
+  }
+  if (!verdict.found) {
+    console.log("  AVISO: code-review.json não foi gravado — revisão inconclusiva, leia o log.");
+  } else if (verdict.blocking) {
+    const msg = `code review apontou ${verdict.blocking} achado(s) bloqueante(s) — ver ${path.relative(REPO_ROOT, reviewDir)}/code-review.md`;
+    if ((cfg.gate ?? "warn") === "block") errors.push(msg);
+    else console.log(`  AVISO: ${msg}`);
+  }
+
+  fs.writeFileSync(
+    marker,
+    JSON.stringify({ head_sha: headSha, at: Date.now() / 1000, results, errors }, null, 2),
+    "utf-8"
+  );
+
+  return { results, errors, reviewDir };
+}
+
+async function cmdReviewFeature(args: string[]): Promise<void> {
+  if (!args.length) {
+    die("uso: review-feature <feature-slug> --base <ref> [--branch <ref>] [--force]");
+  }
+  const feature = args[0];
+  const baseIdx = args.indexOf("--base");
+  const branchIdx = args.indexOf("--branch");
+  const force = args.includes("--force");
+  if (baseIdx === -1 || !args[baseIdx + 1]) {
+    die(
+      "review-feature precisa de --base <ref> explícito (ex.: o commit onde a feature começou, " +
+        "ou a branch default do repo) — o harness não adivinha onde a feature divergiu."
+    );
+  }
+  const base = args[baseIdx + 1];
+  const branch = branchIdx !== -1 && args[branchIdx + 1] ? args[branchIdx + 1] : currentBranch();
+
+  const featureDir = path.join(REPO_ROOT, ".specs", `sdd-${feature}`);
+  if (!fs.existsSync(featureDir)) {
+    die(`pasta não encontrada: ${path.relative(REPO_ROOT, featureDir)}`);
+  }
+
+  const { errors } = await runFeatureReview(feature, base, branch, force);
   if (errors.length) {
     for (const e of errors) console.error(`  - ${e}`);
     process.exit(1);
@@ -2358,7 +2499,7 @@ interface Deteccao {
   lint: string | null;
   scopes: Record<string, { paths: string[] }>;
   copy_paths: string[];
-  crap: { enabled: boolean; coverage_command?: string };
+  crap: { enabled: boolean; runtime?: "python" | "node"; tool?: string; coverage_command?: string };
   cognitive_loop_dir: string | null;
   pendencias: string[];
   notas: string[];
@@ -2380,6 +2521,10 @@ function temBinario(bin: string): boolean {
 
 function pythonImporta(mod: string): boolean {
   return runCmd(`python -c "import ${mod}"`, REPO_ROOT, 30_000).code === 0;
+}
+
+function nodeModuloResolvivel(mod: string): boolean {
+  return runCmd(`node -e "require.resolve(${JSON.stringify(mod)})"`, REPO_ROOT, 30_000).code === 0;
 }
 
 function subdiretorios(rel: string): string[] {
@@ -2514,6 +2659,31 @@ function detectaLint(linguagem: string, pendencias: string[]): string | null {
   return null;
 }
 
+// Chute informado do comando de cobertura Node — como o de Python, é ponto de revisão humana
+// (ver ressalva no README). Prioriza o runner já declarado em package.json; sem nenhum dos três,
+// não adivinha um comando que provavelmente erra.
+function detectaCoverageCommandNode(): string | null {
+  const pkgPath = path.join(REPO_ROOT, "package.json");
+  if (!fs.existsSync(pkgPath)) return null;
+  let pkg: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+  try {
+    pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+  } catch {
+    return null;
+  }
+  const deps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
+  if (deps.vitest) {
+    return "npx vitest run --coverage --coverage.provider=istanbul --coverage.reporter=json {test_targets}";
+  }
+  if (deps.jest) {
+    return "npx jest --coverage --coverageReporters=json {test_targets}";
+  }
+  if (deps.nyc || deps.c8) {
+    return "npx nyc --reporter=json -- <comando de teste do repo> {test_targets}";
+  }
+  return null;
+}
+
 function detectaPerfil(): Deteccao {
   const pendencias: string[] = [];
   const notas: string[] = [];
@@ -2532,21 +2702,49 @@ function detectaPerfil(): Deteccao {
   const copyPaths = !PLUGIN_ROOT || repoTem(".claude/settings.json") ? [".claude/settings.json"] : [];
   for (const f of [".env", ".env.test", ".env.local"]) if (repoTem(f)) copyPaths.push(f);
 
-  const crapOk = linguagem === "python" && pythonImporta("radon") && pythonImporta("pytest_cov");
   const raiz = raizDeCodigo(exts) ?? ".";
-  const crap = crapOk
-    ? {
-        enabled: true,
-        coverage_command:
-          `pytest -q -p no:cacheprovider --cov=${raiz} --cov-report=json:{coverage_json} ` +
-          "--cov-fail-under=0 {test_targets}",
-      }
-    : { enabled: false };
-  if (!crapOk) {
-    notas.push(
-      "crap: desligado — a etapa exige Python com `radon` e `pytest-cov` no ambiente. Ligue com " +
-        "enabled=true depois de instalá-los; o resto do harness não depende dela."
-    );
+  const pythonCrapOk = linguagem === "python" && pythonImporta("radon") && pythonImporta("pytest_cov");
+  const nodeCoverageCommand = linguagem === "node" ? detectaCoverageCommandNode() : null;
+  const nodeCrapOk = linguagem === "node" && !!nodeCoverageCommand && nodeModuloResolvivel("eslintcc");
+
+  let crap: { enabled: boolean; runtime?: "python" | "node"; tool?: string; coverage_command?: string };
+  if (pythonCrapOk) {
+    crap = {
+      enabled: true,
+      coverage_command:
+        `pytest -q -p no:cacheprovider --cov=${raiz} --cov-report=json:{coverage_json} ` +
+        "--cov-fail-under=0 {test_targets}",
+    };
+  } else if (nodeCrapOk) {
+    crap = {
+      enabled: true,
+      runtime: "node",
+      tool: "tools/crap_calculator.ts",
+      coverage_command: nodeCoverageCommand!,
+    };
+  } else {
+    crap = { enabled: false };
+  }
+  if (!crap.enabled) {
+    if (linguagem === "python") {
+      notas.push(
+        "crap: desligado — a etapa exige Python com `radon` e `pytest-cov` no ambiente. Ligue com " +
+          "enabled=true depois de instalá-los; o resto do harness não depende dela."
+      );
+    } else if (linguagem === "node") {
+      const falta: string[] = [];
+      if (!nodeCoverageCommand) falta.push("nenhum runner de teste conhecido (vitest/jest/nyc/c8) em package.json");
+      if (!nodeModuloResolvivel("eslintcc")) falta.push("`eslintcc` não resolvível (instale como devDependency)");
+      notas.push(
+        `crap: desligado — ${falta.join("; ")}. Ligue com enabled=true, runtime="node", ` +
+          "tool=\"tools/crap_calculator.ts\" depois de resolver; o resto do harness não depende dela."
+      );
+    } else {
+      notas.push(
+        "crap: desligado — sem detector para esta linguagem. Ligue manualmente se houver um " +
+          "equivalente a radon/eslintcc disponível; o resto do harness não depende dela."
+      );
+    }
   }
 
   const candidatosCL = [
@@ -2651,6 +2849,8 @@ function aplicaDeteccao(perfil: PerfilJson, d: Deteccao): PerfilJson {
   const crap = { ...((out.crap as PerfilJson) ?? {}) };
   crap.enabled = d.crap.enabled;
   if (d.crap.coverage_command) crap.coverage_command = d.crap.coverage_command;
+  if (d.crap.runtime) crap.runtime = d.crap.runtime;
+  if (d.crap.tool) crap.tool = d.crap.tool;
   out.crap = crap;
 
   const postVerify = { ...((out.post_verify as PerfilJson) ?? {}) };
@@ -2691,7 +2891,11 @@ function cmdInitRepo(args: string[]): void {
     console.log(`  teste: ${d.test_command_template ?? "NÃO DETECTADO"}`);
     console.log(`  lint: ${d.lint ?? "nenhum"}`);
     console.log(`  crap: ${d.crap.enabled ? "ligado" : "desligado"}`);
-    console.log(`  cognitive_loop: ${d.cognitive_loop_dir ?? "job removido (plugin não encontrado)"}`);
+    console.log(
+      d.cognitive_loop_dir
+        ? `  cognitive_loop: plugin encontrado em ${d.cognitive_loop_dir} (job não vem no template padrão — adicione-o de volta a post_verify.jobs se quiser usá-lo)`
+        : "  cognitive_loop: não faz parte do template padrão (ver SKILL.md § Revisão automática)"
+    );
   }
 
   if (PLUGIN_ROOT && !args.includes("--hook")) {
@@ -2826,8 +3030,14 @@ function diagnostico(): Problema[] {
     for (const marca of ["{coverage_json}", "{test_targets}"]) {
       if (!cov.includes(marca)) add("ERRO", "crap.coverage_command", `não contém ${marca}.`);
     }
-    if (!pythonImporta("radon")) add("ERRO", "crap", "`radon` não importável — instale-o ou desligue crap.enabled.");
-    if (!pythonImporta("pytest_cov")) add("ERRO", "crap", "`pytest-cov` não importável — instale-o ou desligue crap.enabled.");
+    if ((crap.runtime ?? "python") === "node") {
+      if (!nodeModuloResolvivel("eslintcc")) {
+        add("ERRO", "crap", "`eslintcc` não resolvível — instale-o (devDependency) ou desligue crap.enabled.");
+      }
+    } else {
+      if (!pythonImporta("radon")) add("ERRO", "crap", "`radon` não importável — instale-o ou desligue crap.enabled.");
+      if (!pythonImporta("pytest_cov")) add("ERRO", "crap", "`pytest-cov` não importável — instale-o ou desligue crap.enabled.");
+    }
   }
 
   const pv = cfg.post_verify ?? {};
@@ -2902,6 +3112,7 @@ async function main(): Promise<void> {
     "run-spec": cmdRunSpec,
     "run-parallel": cmdRunParallel,
     "post-verify": cmdPostVerify,
+    "review-feature": cmdReviewFeature,
     "discard-spec-worktree": cmdDiscardSpecWorktree,
   };
 

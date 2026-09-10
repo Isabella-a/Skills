@@ -39,7 +39,9 @@ o comando falha: palpite de escopo é pior que erro explícito.
 2. **`red_expects`** — ver abaixo; é o campo que decide se o gate de RED aceita a falha.
 3. **`context_paths`** — vazio por padrão. Acrescente **só** o que a fase precisa ler além da
    spec, dos testes e da produção da própria spec (o `models.py` do domínio, o `conftest.py`
-   relevante). Leitura ampla é o que faz a sessão da fase custar caro.
+   relevante). Leitura ampla é o que faz a sessão da fase custar caro — o mesmo vale para
+   `PROJECT_MAP.md`: nunca o arquivo inteiro, só as seções que a Seção 0 dele indica para o `app`
+   deste packet (ver `SKILL.md` § `PROJECT_MAP.md` — leitura escopada).
 4. **`phases.<fase>.requirements`** — recorte de IDs por fase, se a spec for grande. Vazio =
    todos os IDs.
 5. **`phases.<fase>.artifacts` / `.extra_commands`** — contratos estruturais e validações extras
@@ -144,6 +146,12 @@ fora do seu `app` é reprovado na validação — é a regra de dependências en
 `token_budget` é preenchido pelo scaffold com o padrão do repo (8 leituras iniciais, 500 linhas
 por leitura, 50 resultados de busca, sem leitura ampla). Mexer nele só faz sentido quando a spec
 é genuinamente grande — e, se for, o sinal costuma ser que ela deveria estar dividida.
+
+Isso vale também para `PROJECT_MAP.md`, fora do orçamento formal do packet: ele é lido de novo em
+cada fase (RED, GREEN, revisão) e em cada spec da mesma feature, então ler o arquivo inteiro
+todas essas vezes é o jeito mais fácil de estourar o orçamento sem que apareça no `token_budget`
+do packet. Leia só as seções que a Seção 0 do próprio `PROJECT_MAP.md` indica para o `app`/
+domínio deste packet — nunca o documento inteiro. Ver `SKILL.md` § `PROJECT_MAP.md`.
 
 ## Bloqueios
 

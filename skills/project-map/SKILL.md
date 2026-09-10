@@ -17,6 +17,12 @@ não existir, ou perguntar antes de regenerar se já existir e parecer desatuali
 A saída é um único arquivo, `PROJECT_MAP.md`, na **raiz do repositório** — visível, versionado,
 útil para humanos (onboarding) e para IA.
 
+O arquivo abre com uma **Seção 0 — índice de leitura por escopo** (progressive disclosure): uma
+tabela fixa que diz, por tipo de tarefa, quais das seções 1-13 são relevantes. Quem consome o
+mapa (sdd, spec-harness, react-best-practices, nestjs-modular-monolith) lê a Seção 0 primeiro e
+depois só as seções que o escopo da tarefa exige — nunca o arquivo inteiro por padrão. Isso é o
+que faz o documento crescer sem virar um custo de token fixo em toda sessão.
+
 ---
 
 ## Princípio central: evidência, não suposição
@@ -136,6 +142,9 @@ Use `templates/project_map.md`. Regras:
 5. **Cabeçalho com data e commit** (`git rev-parse --short HEAD`) — sinal informal de idade do
    documento; nenhuma outra skill precisa validar isso automaticamente, é só para quem for revisar
    saber há quanto tempo o mapeamento foi feito.
+6. **Preencha a linha "Seções não se aplicam" da Seção 0** com a lista das seções que você marcou
+   "Não se aplica" no Passo 3 (ex.: "§5, §10") — ou remova a linha se todas as seções tiverem
+   conteúdo real. A tabela da Seção 0 em si é fixa (vem do template); só essa linha é gerada.
 
 Ao terminar, mostre um resumo de 5-8 linhas ao usuário e diga como atualizar: rodar esta skill com
 `--refresh`, ou pedir "atualiza o mapeamento do projeto".

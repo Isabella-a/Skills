@@ -8,9 +8,11 @@ Não implemente nada. Não sugira arquitetura. Só explore e documente o que exi
 
 **Contrato/schema a explorar:** $FONTE
 **Contexto da feature:** $CONTEXTO
-**Mapa do repositório:** leia `PROJECT_MAP.md` antes de começar — ele diz onde cada tipo de
-artefato mora neste repositório. Use os caminhos de lá nos comandos abaixo, em vez de adivinhar a
-estrutura.
+**Mapa do repositório:** `PROJECT_MAP.md § Arquitetura e estrutura real` diz onde cada tipo de
+artefato mora neste repositório (se a fonte for um serviço externo, leia também
+`§ Integrações externas recorrentes`) — leia só essas seções, não o arquivo inteiro (veja a
+Seção 0 do próprio `PROJECT_MAP.md` para achar a linha de cada uma). Use os caminhos de lá nos
+comandos abaixo, em vez de adivinhar a estrutura.
 
 ---
 

@@ -63,8 +63,10 @@
     }
   },
   "crap": {
-    "_comment": "Etapa determinística de risco rodada no VERIFY, depois do commit da fase e ANTES da revisão automática: pontua CRAP ((comp^2 * (1-cov)^3) + comp) só nas funções dos arquivos de PRODUÇÃO que a spec alterou. Nenhuma sessão de modelo. CRAP é gameável por teste sem assert, então aqui é sinal para o code review (via {crap_top}) e série histórica na evidência — nunca alvo de otimização de um agente. Requer `radon` e `pytest-cov` (ou equivalente que gere JSON do coverage.py) no ambiente que roda o harness; sem eles o passo fica inconclusivo, com aviso, e nunca aprova silenciosamente. Para desligar: enabled=false.",
+    "_comment": "Etapa determinística de risco rodada no VERIFY, depois do commit da fase e ANTES da revisão automática: pontua CRAP ((comp^2 * (1-cov)^3) + comp) só nas funções dos arquivos de PRODUÇÃO que a spec alterou. Nenhuma sessão de modelo. CRAP é gameável por teste sem assert, então aqui é sinal para o code review (via {crap_top}) e série histórica na evidência — nunca alvo de otimização de um agente. Para desligar: enabled=false.",
+    "_runtime_comment": "'runtime' escolhe a ferramenta (não a stack analisada, que vem de --source-dir): 'python' (padrão) roda tools/crap_calculator.py via radon+coverage.py; 'node' roda tools/crap_calculator.ts via eslintcc (regra complexity do ESLint) sobre um relatório de cobertura Istanbul. Ambas exigem a lib no ambiente do repositório ALVO, não no motor; sem ela o passo fica inconclusivo, com aviso, e nunca aprova silenciosamente.",
     "enabled": true,
+    "runtime": "python",
     "gate": "warn",
     "_gate_comment": "warn = função acima do limiar entra na evidência e no prompt do code review. block = reprova o VERIFY.",
     "threshold": 30,
@@ -73,44 +75,31 @@
     "python": "python",
     "timeout_ms": 900000,
     "coverage_command": "pytest -q -p no:cacheprovider --cov=. --cov-report=json:{coverage_json} --cov-fail-under=0 {test_targets}",
-    "_coverage_command_comment": "Roda no worktree da spec, herdando o ambiente da sessão. O denominador é a suíte do ESCOPO, não o test_command da spec: medir cobertura só pelos testes da spec inflaria o CRAP de código que a suíte já cobre. TODO: ajuste o comando ao runner deste repo (precisa de --cov e de um relatório JSON do coverage.py em {coverage_json}).",
+    "_coverage_command_comment": "Roda no worktree da spec, herdando o ambiente da sessão. O denominador é a suíte do ESCOPO, não o test_command da spec: medir cobertura só pelos testes da spec inflaria o CRAP de código que a suíte já cobre. TODO Python: precisa de --cov e de um relatório JSON do coverage.py em {coverage_json}. Para TypeScript/JavaScript, troque runtime para 'node', tool para 'tools/crap_calculator.ts' e este comando para algo como 'npx vitest run --coverage --coverage.provider=istanbul --coverage.reporter=json {test_targets}' (ou 'npx jest --coverage --coverageReporters=json {test_targets}') — precisa gerar coverage/coverage-final.json (formato Istanbul) e ter `eslintcc` + `@typescript-eslint/parser` como devDependency do repo.",
     "scope_tests": {
-      "_comment": "Alvos de pytest por escopo. Ausente = derivado dos scopes.paths (<prefixo>/tests quando existe, ou o próprio prefixo quando já é de teste)."
+      "_comment": "Alvos de pytest/vitest/jest por escopo. Ausente = derivado dos scopes.paths (<prefixo>/tests quando existe, ou o próprio prefixo quando já é de teste)."
     }
   },
   "post_verify": {
-    "_comment": "Roda automaticamente DEPOIS que a fase VERIFY passa nos gates e commita, UMA VEZ por spec: o marcador .post-verify.json no diretório de revisão impede que uma reverificação (ex.: retry do autorun) dispare tudo de novo. Para refazer de propósito: harness.ts post-verify <verify.yaml>.",
+    "_comment": "Roda POR FEATURE, não por spec: `harness.ts review-feature <feature> --base <ref>`, chamado depois que todas as specs da feature já foram mergeadas na branch de trabalho (não mais automaticamente a cada VERIFY — repetir os mesmos jobs a cada spec era o maior custo de token repetido do autorun). O marcador .post-verify.json no diretório de revisão impede reexecução no mesmo head; --force ignora. Para revisar UMA spec isolada manualmente (fora do fluxo padrão): harness.ts post-verify <verify.yaml>.",
     "enabled": true,
     "model": "sonnet",
     "timeout_ms": 2400000,
     "permission_mode": "acceptEdits",
     "allowed_tools": "Read Grep Glob Bash Write Edit TodoWrite",
     "gate": "warn",
-    "_gate_comment": "warn = o resultado da revisão entra na evidência mas não reprova a fase. block = achado com blocking:true no code-review.json reprova o VERIFY.",
+    "_gate_comment": "Como a revisão por feature roda DEPOIS do merge de todas as specs, 'block' aqui não impede merge nenhum — é sinal para quem orquestra revisar (review-feature sai com exit 1). warn = só entra no relatório.",
     "require_quiz_pass": false,
-    "_require_quiz_pass_comment": "true = o merge automático da branch da spec exige .cognitive-loop/quiz/<sha-da-ponta-da-branch>.passed (a trava do /quizzes).",
+    "_require_quiz_pass_comment": "Sem efeito com os jobs padrão (nenhum deles produz .cognitive-loop/quiz/*.passed). Só liga alguma coisa se você configurar de volta um job que gere essa trava — ver comentário do cognitive_loop abaixo.",
     "jobs": [
       {
         "id": "code_review",
         "add_dirs": [],
         "plugin_dirs": [],
-        "prompt": "Use a skill mattpocock-skills:code-review para revisar a implementação da spec {spec} (feature {feature}, spec {num}).\n\nDiff a revisar: `git diff {base}...{branch}` (rode você mesmo; a branch existe neste repositório).\nContexto obrigatório: leia {spec} inteira antes de revisar — a revisão é contra o que a spec pediu (RF/EC/T), não contra gosto pessoal.\nSinal de risco medido pelo harness (CRAP = complexidade² × (1-cobertura)³ + complexidade, calculado só nas funções que esta spec alterou):\n{crap_top}\nUse isso como PISTA, não como veredito: avalie se a complexidade se justifica pela spec e se a cobertura que falta é de caminho relevante. Nunca recomende teste sem assert só para baixar o número.\n\nSiga as regras invioláveis do CLAUDE.md/AGENTS.md na raiz deste repositório e a regra de dependências entre camadas.\n\nEscreva DOIS arquivos e nada mais:\n1. {out}/code-review.md — relatório em português, achados ordenados por severidade, cada um com arquivo:linha, o que quebra e a correção sugerida.\n2. {out}/code-review.json — JSON com o shape exato {{\"blocking\": <bool>, \"findings\": [{{\"severity\": \"critical|high|medium|low\", \"file\": \"...\", \"line\": <int>, \"summary\": \"...\", \"blocking\": <bool>}}]}}. blocking do topo = true se e somente se houver ao menos um finding com blocking true. Só marque blocking em defeito de correção, de segurança ou violação explícita da spec — não em preferência de estilo.\n\nNão altere nenhum arquivo de produção nem de teste. Não commite.",
-        "_comment": "mattpocock-skills é dependência deste plugin (claude-skills) — instalado junto, sem passo extra."
-      },
-      {
-        "id": "ponytail_review",
-        "add_dirs": [],
-        "plugin_dirs": [],
-        "prompt": "Use a skill ponytail:ponytail-review sobre a implementação da spec {spec} (feature {feature}, spec {num}) — revisão focada exclusivamente em over-engineering (dependência reinventada, abstração especulativa, flexibilidade morta).\n\nDiff a revisar: `git diff {base}...{branch}`.\n\nEscreva {out}/ponytail-review.md com os achados no formato da própria skill (`L<linha>: <tag> <o quê>. <substituto>.`). Se não houver nada a cortar, escreva só `Lean already. Ship.`.\n\nNão altere nenhum arquivo de produção nem de teste. Não commite.",
-        "_comment": "ponytail é dependência deste plugin (claude-skills) — instalado junto, sem passo extra."
-      },
-      {
-        "id": "cognitive_loop",
-        "add_dirs": [],
-        "plugin_dirs": [],
-        "prompt": "TODO: este job exige o plugin cognitive-loop instalado (add_dirs/plugin_dirs). Rode a skill cognitive-loop:explain-diff sobre a mudança da spec {spec} (feature {feature}, spec {num}).\n\nDiff alvo: `git diff {base}...{branch}` — use exatamente esse range, não HEAD~1..HEAD.\nO loop completo é obrigatório nesta execução, nesta ordem:\n1. explain-diff — as 6 seções fixas, com repo-grounding real (leia os arquivos tocados inteiros, não só os hunks).\n2. cognitive-loop:micro-mundos — pelo menos UM micro mundo sobre a lógica mais difícil da mudança, embutido no explicador. Reutilize componente do catálogo; só crie componente novo com justificativa.\n3. cognitive-loop:quizzes — o quiz-trava sobre esta mudança, embutido no explicador.\n\nO sha desta mudança para efeito de nomeação e da trava do quiz é {head_sha} (ponta da branch da spec) — NÃO use `git rev-parse --short HEAD`, que aqui aponta para a branch de trabalho. Grave os artefatos em {out}/cognitive-loop/ (payload.json, explainer.html, explainer.md, quiz-payload.json, quiz.html e os micro mundos).\n\nNão altere nenhum arquivo de produção nem de teste. Não commite.",
-        "_comment": "Ao contrário de code_review e ponytail_review, cognitive-loop NÃO é dependência deste plugin (fonte não verificada) — desligue removendo este job se não estiver instalado nesta máquina/repositório."
+        "prompt": "Revise a implementação da feature {feature} — todas as specs em .specs/sdd-{feature}/specs/*.md — em DUAS passadas, na MESMA sessão (leia o diff uma vez só e reaproveite nas duas, em vez de abrir duas sessões para o mesmo diff):\n\nPASSADA 1 — use a skill mattpocock-skills:code-review: bugs, violação das regras invioláveis do CLAUDE.md/AGENTS.md (incl. dependências entre camadas) e o que cada spec pediu (RF/EC/T) vs o que foi entregue. Sinal de risco medido pelo harness, por spec (CRAP = complexidade² × (1-cobertura)³ + complexidade, calculado só nas funções que cada spec alterou):\n{crap_top}\nUse isso como PISTA, não como veredito — nunca recomende teste sem assert só para baixar o número.\n\nPASSADA 2 — use a skill ponytail:ponytail-review sobre o MESMO diff: exclusivamente over-engineering (dependência reinventada, abstração especulativa, flexibilidade morta). Não repita achados da passada 1.\n\nDiff a revisar (uma vez, reaproveitado nas duas passadas): `git diff {base}...{branch}` (rode você mesmo; a branch existe neste repositório). Contexto obrigatório: leia as specs em .specs/sdd-{feature}/specs/*.md antes de revisar.\n\nEscreva TRÊS arquivos e nada mais:\n1. {out}/code-review.md — achados da passada 1, em português, por severidade, cada um com arquivo:linha, o que quebra e a correção sugerida.\n2. {out}/code-review.json — JSON com o shape exato {{\"blocking\": <bool>, \"findings\": [{{\"severity\": \"critical|high|medium|low\", \"file\": \"...\", \"line\": <int>, \"summary\": \"...\", \"blocking\": <bool>}}]}}. blocking do topo = true se e somente se houver ao menos um finding com blocking true. Só marque blocking em defeito de correção, de segurança ou violação explícita de alguma spec — não em preferência de estilo.\n3. {out}/ponytail-review.md — achados da passada 2, no formato da própria skill (`L<linha>: <tag> <o quê>. <substituto>.`). Se não houver nada a cortar, escreva só `Lean already. Ship.`.\n\nNão altere nenhum arquivo de produção nem de teste. Não commite — as specs já estão mergeadas.",
+        "_comment": "mattpocock-skills e ponytail são dependências deste plugin (claude-skills) — instaladas junto, sem passo extra. As duas eram jobs separados (2 sessões lendo o mesmo diff); virou um job só para não pagar leitura em dobro."
       }
-    ]
+    ],
+    "_cognitive_loop_removido": "O job cognitive_loop (explain-diff + micro-mundo interativo + quiz-trava) saiu do padrão: é a sessão mais cara do post_verify (repo-grounding integral + geração de artefato interativo) e roda por feature/spec incondicionalmente sem que a maioria dos times use o resultado. Continua disponível como skill (cognitive-loop:explain-diff) para quem quiser rodar manualmente numa spec específica; para religar como job automático, copie o bloco removido desta config (ver histórico do repo) trocando {spec}/{num} por {feature} e adaptando ao diff acumulado."
   }
 }
