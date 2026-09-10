@@ -65,16 +65,19 @@ node $HARNESS doctor        # --json para consumir a lista programaticamente
 `init-repo` **detecta** linguagem, extensões, marcadores de teste, comando de teste (lendo
 `pytest.ini`/`package.json`/`go.mod` — inclusive `--no-cov` quando o `addopts` já força cobertura),
 linter, escopos (subdiretórios do contêiner de domínios: `app/plataformas`, `src/modules`,
-`packages`…), `copy_paths` (`.env` que existir) e se a etapa de CRAP tem o que precisa: em Python,
-`radon`/`pytest-cov`; em Node, `eslintcc` (via `package.json`, detectando `vitest`/`jest`/`nyc`
-para o `coverage_command`). O que ele não infere vira `_pendencias` no próprio JSON, e o `doctor`
-trata cada pendência como **ERRO** — ou seja, sai com código 1 enquanto a configuração estiver
-incompleta.
+`packages`…), `copy_paths` (`.env` que existir) e se a etapa de CRAP tem o que precisa. Node é o
+runtime padrão de CRAP (`eslintcc`); Python é a alternativa (`radon`/`pytest-cov`), ligada só se
+o repositório for detectado como Python. Para Node, `init-repo` prefere o comando de teste já
+confirmado em `PROJECT_MAP.md § Testes` (skill `project-map`) — sinal mais forte, porque veio de
+evidência real — e só cai para adivinhar por `vitest`/`jest`/`nyc` em `package.json` se
+`PROJECT_MAP.md` não existir ou não mencionar um runner conhecido. O que ele não infere vira
+`_pendencias` no próprio JSON, e o `doctor` trata cada pendência como **ERRO** — ou seja, sai com
+código 1 enquanto a configuração estiver incompleta.
 
 O `doctor` classifica: **ERRO** impede uma spec de rodar (escopo placeholder ou inexistente,
 `{test_paths}`/`{files}` ausentes, binário fora do PATH, hook não registrado, `crap` ligado sem
-`radon` (Python) ou `eslintcc` (Node, `crap.runtime: "node"`), prompt de fase faltando); **AVISO**
-apenas degrada (nenhum linter, `copy_paths` inexistente, CRAP desligado).
+`eslintcc` (Node, padrão) ou `radon` (Python, `crap.runtime: "python"`), prompt de fase faltando);
+**AVISO** apenas degrada (nenhum linter, `copy_paths` inexistente, CRAP desligado).
 
 Seu trabalho é fechar os ERROs lendo o repositório — `CLAUDE.md`/`AGENTS.md`, `pyproject.toml`,
 `package.json`, `Makefile`, workflow de CI — e editando o JSON. O que quase sempre precisa de
@@ -176,29 +179,12 @@ exato. Os caminhos possíveis:
 - **a spec está errada**: pare. Corrigir a spec é decisão sua, não do implementador — e não
   afrouxe `contract`/`forbidden.behaviors` do packet para passar o gate.
 
-## CRAP pós-VERIFY (determinístico, sem modelo)
-
-Antes da revisão automática, o harness roda a suíte do escopo com relatório JSON de cobertura e
-pontua CRAP (`complexidade² × (1-cobertura)³ + complexidade`) **só nas funções de produção que a
-spec alterou**. Nenhuma sessão de modelo. Artefatos: `crap.json`/`coverage.json` no diretório de
-revisão, resumo no campo `crap` da evidência e o top-N injetado no prompt do code review como
-`{crap_top}`.
-
-Gate `warn` por padrão (`crap.gate`, `crap.threshold`). É sinal para a revisão, não alvo de
-otimização: CRAP cai igual com teste sem `assert`, então nenhum agente recebe "baixe o CRAP" como
-tarefa. Detalhes e casos inconclusivos em `references/verify.md#crap-fase-verify-determinístico`.
-
-`crap.runtime` escolhe a ferramenta, não a stack: `"python"` (padrão, `tools/crap_calculator.py`,
-usa `radon`) ou `"node"` (`tools/crap_calculator.ts`, usa `eslintcc` — a regra `complexity` do
-próprio ESLint — sobre um relatório de cobertura Istanbul). `init-repo` escolhe sozinho ao
-detectar a linguagem; ambas produzem o mesmo shape de evidência.
-
 ## Revisão automática — por FEATURE, não por spec
 
-A revisão automática **não roda mais a cada VERIFY**. Ela é cara (uma sessão sonnet completa,
-lendo diff+specs do zero) e repeti-la a cada spec era o maior custo de token repetido do
-`autorun`. Em vez disso, rode **uma vez por feature**, depois que todas as specs já estiverem
-mergeadas na branch de trabalho:
+A revisão automática **não roda a cada VERIFY**. Ela é cara (uma sessão sonnet completa, lendo
+diff+specs do zero) e repeti-la a cada spec era o maior custo de token repetido do `autorun`. Em
+vez disso, rode **uma vez por feature**, depois que todas as specs já estiverem mergeadas na
+branch de trabalho:
 
 ~~~bash
 node $HARNESS review-feature <feature-slug> --base <ref-onde-a-feature-começou>
@@ -208,16 +194,43 @@ node $HARNESS review-feature <feature-slug> --base <ref-onde-a-feature-começou>
 branch default do repo, ou o commit anterior à primeira spec). `--branch` (padrão: branch atual)
 e `--force` (ignora o marcador de já-executado) são opcionais.
 
+### CRAP — preparação da revisão, não gate do VERIFY
+
+Antes de abrir a sessão de revisão, `review-feature` roda CRAP (determinístico, sem modelo)
+**sobre o diff acumulado da feature** (`base...branch`), por escopo tocado: suíte de teste do
+escopo com relatório de cobertura, pontuando CRAP (`complexidade² × (1-cobertura)³ + complexidade`)
+só nas funções de PRODUÇÃO alteradas. Isso não é mais um gate mecânico do VERIFY — é insumo para
+a skill de code review, injetado no prompt como `{crap_top}`. Artefatos: `crap.json`/
+`crap-arquivos.txt` em `.specs/sdd-<feature>/reviews/feature/`.
+
+Gate `warn` por padrão (`crap.gate`, `crap.threshold`). Como isso roda **depois** de todas as
+specs já mergeadas, `crap.gate: "block"` não impede merge nenhum — só faz `review-feature` sair
+com exit 1, como sinal para quem orquestra. É sinal para a revisão, não alvo de otimização: CRAP
+cai igual com teste sem `assert`, então nenhum agente recebe "baixe o CRAP" como tarefa. Detalhes
+em `references/verify.md § CRAP`.
+
+`crap.runtime` escolhe a ferramenta, não a stack: `"node"` (**padrão**, `tools/crap_calculator.ts`,
+usa `eslintcc` — a regra `complexity` do próprio ESLint — sobre um relatório de cobertura
+Istanbul) ou `"python"` (`tools/crap_calculator.py`, usa `radon`+`pytest-cov`). `init-repo`
+escolhe sozinho ao detectar a linguagem; ambas produzem o mesmo shape de evidência.
+
+### Os jobs de revisão
+
 O template deste plugin vem com **um job** (`code_review`), que faz duas passadas na mesma
 sessão sobre o mesmo diff — evita abrir uma segunda sessão só para reler o que a primeira já leu:
 
-- **Passada 1** (`mattpocock-skills:code-review`) — revisão geral contra CLAUDE.md/AGENTS.md,
-  bugs e o sinal de CRAP (agregado de todas as specs já revisadas da feature).
+- **Passada 1** (skill `code-review-skill`) — revisão geral contra CLAUDE.md/AGENTS.md, bugs e o
+  sinal de CRAP.
 - **Passada 2** (`ponytail:ponytail-review`) — focada só em over-engineering (dependência
   desnecessária, abstração especulativa, flexibilidade morta).
 
-`mattpocock-skills` e `ponytail` são dependências do plugin `claude-skills` — instaladas junto
-com ele, sem passo extra. Artefatos em `.specs/sdd-<feature>/reviews/feature/`.
+**Atenção:** `code-review-skill` **não** é dependência deste plugin (`claude-skills`) — é uma
+skill de stack específico (ver README) que precisa estar instalada separadamente no ambiente que
+roda `review-feature`. Sem ela, troque a Passada 1 de volta para `mattpocock-skills:code-review`
+(genérica, essa sim dependência garantida do plugin) no `harness.config.json` do repositório.
+`ponytail` (Passada 2) continua sendo dependência garantida do plugin, instalada junto com ele.
+
+Artefatos em `.specs/sdd-<feature>/reviews/feature/`.
 
 O job `cognitive_loop` (explicador + micro-mundo interativo + quiz-trava) saiu do template
 padrão: é a sessão mais cara de todo o fluxo (repo-grounding integral + geração de artefato

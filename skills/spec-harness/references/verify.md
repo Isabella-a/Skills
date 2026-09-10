@@ -37,63 +37,75 @@ Cada execução também acrescenta uma linha JSON em
 `${SPEC_HARNESS_METRICS_FILE}` ou `/tmp/spec_harness/metrics.jsonl` com
 arquivos alterados, chamadas bloqueadas e totais de validação.
 
-## CRAP (fase VERIFY, determinístico)
+## CRAP (preparação da revisão, não gate do VERIFY)
 
-Depois do commit da fase VERIFY e **antes** da revisão automática, o harness mede risco nas
-funções de produção que a spec alterou (diff `base...spec/<feature>/<NN>`, não o diff da fase):
+CRAP **não roda mais na fase VERIFY**: é preparação da revisão por feature, rodada dentro do
+próprio `review-feature`, antes de abrir a sessão do job de code review. Mede risco nas funções
+de produção que a **feature inteira** alterou (diff `base...branch`, acumulando todas as specs já
+mergeadas), não o diff de uma spec isolada:
 
-1. roda a suíte do **escopo** com `--cov-report=json` (`crap.coverage_command`, alvos de
-   `crap.scope_tests` ou derivados de `scopes.paths`) — o denominador é a suíte do app, não o
-   `test_command` da spec, que infla o CRAP de código já coberto;
-2. chama a ferramenta declarada em `crap.tool` (`--only-from` restrito a esses arquivos):
+1. Descobre quais **escopos** a feature tocou (interseção do diff com `scopes.paths`) e roda
+   CRAP uma vez por escopo tocado — uma feature típica toca um só, mas nada impede mais de um.
+2. Para cada escopo: roda a suíte com relatório de cobertura (`crap.coverage_command`, alvos de
+   `crap.scope_tests` ou derivados de `scopes.paths`) — o denominador é a suíte do escopo, não só
+   os arquivos que a feature tocou, o que infla o CRAP de código já coberto;
+3. chama a ferramenta declarada em `crap.tool` (`--only-from` restrito aos arquivos do escopo):
    `CRAP = complexidade² × (1 − cobertura)³ + complexidade`. Duas implementações, escolhidas por
    `crap.runtime`:
-   - **Python** (`tools/crap_calculator.py`, padrão): exige `radon` e um plugin de cobertura que
-     gere JSON do coverage.py no ambiente do repo.
-   - **Node** (`tools/crap_calculator.ts`, `runtime: "node"`): exige `eslintcc` (e
+   - **Node** (**padrão**, `tools/crap_calculator.ts`, `runtime: "node"`): exige `eslintcc` (e
      `@typescript-eslint/parser` para `.ts`/`.tsx`) como devDependency do repo, e um
      `coverage_command` que gere um relatório Istanbul (`coverage-final.json` — o reporter
-     `json` do jest/vitest, ou `nyc --reporter=json`).
-   Ambas produzem o mesmo shape de saída — o resto do harness (evidência, `{crap_top}`) não
-   diferencia qual rodou.
+     `json` do jest/vitest, ou `nyc --reporter=json`). Nesse caso, `{coverage_json}` no comando
+     recebe um **diretório** (`--coverage.reportsDirectory`/`--coverageDirectory`/`--report-dir`),
+     não um arquivo — o nome `coverage-final.json` é fixo do reporter Istanbul.
+   - **Python** (`tools/crap_calculator.py`, `runtime: "python"`): exige `radon` e um plugin de
+     cobertura que gere JSON do coverage.py no ambiente do repo; aí `{coverage_json}` volta a ser
+     um arquivo (`--cov-report=json:{coverage_json}`).
+   Ambas produzem o mesmo shape de saída — o resto do harness (`{crap_top}`) não diferencia qual
+   rodou.
+4. Os resultados de todos os escopos tocados são combinados num relatório só.
 
-Artefatos em `.specs/sdd-<feature>/reviews/<NN>/`: `crap.json` e `crap-arquivos.txt` (o
-`coverage.json` bruto, >1 MB, fica em `/tmp/spec_harness/coverage/<feature>-<NN>.json`). O resumo
-(média, funções acima do limiar, alvos usados) vai para o campo `crap` da evidência, e o top-N
-entra no prompt do code review como `{crap_top}`.
+Artefatos em `.specs/sdd-<feature>/reviews/feature/`: `crap.json` e `crap-arquivos.txt` (os
+relatórios de cobertura brutos, >1 MB cada, ficam em `/tmp/spec_harness/coverage/`). O top-N
+entra no prompt do job de revisão como `{crap_top}`.
 
 O gate é `warn` por padrão: função acima de `crap.threshold` (30) vira aviso e pista de revisão.
-Com `crap.gate: "block"`, ela grava `status: review_blocked` e reprova o VERIFY. Cobertura não
-gerada, `crap.json` ausente ou escopo sem diretório de testes = **inconclusivo** (campo `note`),
-nunca aprovação silenciosa.
+Como isso roda **depois** de todas as specs já mergeadas, `crap.gate: "block"` não impede merge
+nenhum — só faz `review-feature` sair com exit 1, como sinal para quem orquestra. Cobertura não
+gerada, relatório ausente ou escopo sem diretório de testes conhecido = **inconclusivo** (campo
+`note`), nunca aprovação silenciosa — e não impede os demais escopos tocados de serem avaliados.
 
 CRAP é sinal, não alvo: um teste sem `assert` derruba o número igual a um teste bom. Por isso
-nenhuma sessão de modelo recebe "reduza o CRAP" como tarefa — quem lê o número é o code review e
-você.
+nenhuma sessão de modelo recebe "reduza o CRAP" como tarefa — quem lê o número é o job de code
+review e você.
 
 ## Revisão automática (por feature, não mais na fase VERIFY)
 
-A fase VERIFY, ao passar os gates, commita e roda **só o CRAP** (determinístico, sem modelo). A
-revisão automática (`mattpocock-skills:code-review` + `ponytail:ponytail-review`, num job só —
-ambos dependências do plugin `claude-skills`) não dispara mais aqui: rode depois que todas as
-specs da feature já estiverem mergeadas:
+A fase VERIFY, ao passar os gates, só commita — nem CRAP nem a revisão automática rodam mais
+aqui. Os dois são preparação/execução da revisão por feature, disparados juntos por um único
+comando depois que todas as specs da feature já estiverem mergeadas:
 
 ~~~bash
 node $HARNESS review-feature <feature-slug> --base <ref-onde-a-feature-começou>
 ~~~
 
-Ver `SKILL.md#revisão-automática--por-feature-não-por-spec`. Marcador `.post-verify.json` em
+Ver `SKILL.md § Revisão automática — por FEATURE, não por spec`. Marcador `.post-verify.json` em
 `reviews/feature/` impede reexecução no mesmo `head_sha`; `--force` refaz.
+
+O template padrão traz **um job** (`code_review`) com duas passadas na mesma sessão: Passada 1
+usa a skill `code-review-skill` (**não** é dependência garantida do plugin — troque para
+`mattpocock-skills:code-review` se não estiver instalada), Passada 2 usa `ponytail:ponytail-review`
+(essa sim, dependência do plugin `claude-skills`).
 
 O que olhar antes de continuar:
 
 | Artefato | Para quê |
 |---|---|
-| `.specs/sdd-<feature>/reviews/feature/code-review.md` | achados por severidade, com arquivo:linha |
+| `.specs/sdd-<feature>/reviews/feature/code-review.md` | achados da Passada 1, por severidade, com arquivo:linha |
 | `.../code-review.json` | veredito estruturado (`blocking`) |
-| `.../ponytail-review.md` | achados de over-engineering (dependência/abstração desnecessária) |
+| `.../ponytail-review.md` | achados da Passada 2 — over-engineering (dependência/abstração desnecessária) |
 | `.../code_review.log` | a sessão crua do agente, quando algo saiu errado |
-| `.../crap.json` de cada `reviews/<NN>/`, agregado no prompt (`{crap_top}`) | complexidade × cobertura das funções alteradas por spec |
+| `.../crap.json` | complexidade × cobertura das funções que a feature alterou, agregado por escopo tocado — insumo de `{crap_top}` no prompt acima |
 
 `code-review.json` **ausente** é revisão inconclusiva, não aprovação: o harness imprime o aviso
 e você deve ler o log. Como isso acontece **depois** de todas as specs já mergeadas,
