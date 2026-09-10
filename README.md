@@ -112,7 +112,12 @@ Além dessas, uma opcional e não gerenciada por este plugin: skill/MCP de rastr
 
 ```
 /plugin marketplace update isabella-a
+/plugin update claude-skills@isabella-a
 ```
+
+O Claude Code não avisa sozinho quando sai uma versão nova — ele só atualiza quando você roda os
+comandos acima. Antes de atualizar, especialmente se a versão mudou de major, veja o
+[`CHANGELOG.md`](CHANGELOG.md).
 
 ## Estrutura do repositório
 
@@ -121,4 +126,5 @@ Além dessas, uma opcional e não gerenciada por este plugin: skill/MCP de rastr
 skills/            # uma pasta por skill, com SKILL.md na raiz de cada uma
 spec_harness/      # motor do spec-harness (harness.ts) — não é uma skill
 hooks/             # hook de enforcement de path usado pelo spec-harness
+CHANGELOG.md        # histórico de versões do plugin
 ```
