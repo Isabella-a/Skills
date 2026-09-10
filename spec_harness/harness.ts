@@ -1010,44 +1010,10 @@ async function verifyPacket(origArg: string, quiet = false): Promise<VerifyOutco
     if (!quiet) console.log(`Commit criado na branch ${run.branch}.`);
   }
 
-  // CRAP só faz sentido sobre a spec inteira já commitada — por isso roda depois do commit da
-  // fase VERIFY, não a cada fase. A revisão automática (code_review/ponytail_review) NÃO roda
-  // mais aqui: ela é cara demais para repetir a cada spec (uma sessão sonnet completa por job,
-  // lendo o diff/spec de novo em cada uma) e passou a rodar uma vez por FEATURE, depois que
-  // todas as specs já foram mergeadas — ver `review-feature` e `SKILL.md § Revisão automática`.
-  if (packet.phase === "verify") {
-    const extra: Record<string, unknown> = {};
-    const extraErrors: string[] = [];
-    const reviewDir = reviewDirFor(packet);
-
-    const crap = runCrapStep(packet, run, reviewDir, quiet);
-    if (crap) {
-      extra.crap = crap.summary;
-      extraErrors.push(...crap.errors);
-    }
-
-    if (Object.keys(extra).length) {
-      const blocked = extraErrors.length > 0;
-      const finalEvidence = {
-        ...evidence,
-        ...extra,
-        status: blocked ? "review_blocked" : "ready_for_review",
-      };
-      fs.writeFileSync(evidencePath, JSON.stringify(finalEvidence, null, 2), "utf-8");
-    }
-
-    if (extraErrors.length) {
-      if (!quiet) {
-        console.error("\nBLOQUEADO pela revisão automática pós-VERIFY (gate: block):");
-        for (const e of extraErrors) console.error(`  - ${e}`);
-        console.error(
-          "Corrija na branch da spec e rode verify-packet de novo — sem status ready_for_review " +
-            "o run-spec não mergeia."
-        );
-      }
-      return { ok: false, errors: extraErrors, evidence_path: evidencePath, changed_files: changed };
-    }
-  }
+  // Nem CRAP nem a revisão automática (code_review) rodam mais aqui: os dois são preparação para
+  // a revisão por FEATURE, não gates mecânicos por spec — repeti-los a cada VERIFY era o maior
+  // custo de token/tempo repetido do autorun. Ver `review-feature` e
+  // `SKILL.md § Revisão automática`.
 
   if (!quiet) {
     console.log(
@@ -1068,48 +1034,15 @@ async function cmdVerifyPacket(args: string[]): Promise<void> {
 
 // --------------------------------------------------------------------------- crap
 
-// Etapa determinística de risco: roda a suíte do escopo com relatório JSON de cobertura e pontua
-// CRAP ((complexidade^2 * (1-cobertura)^3) + complexidade) APENAS nas funções dos arquivos de
-// produção que esta spec alterou. Não abre sessão de modelo e não pede correção a ninguém — CRAP
-// é gameável por teste sem assert, então aqui ele é sinal para a revisão, nunca alvo de otimização.
-
-// Os arquivos pontuados são os da spec INTEIRA (diff base...branch), não os da fase corrente: na
-// fase VERIFY o baseline é tirado depois do commit do GREEN, então o `changed` da fase é vazio.
-function crapScoredFiles(app: string, branch: string): string[] {
-  const base = gitOut(["merge-base", currentBranch(), branch]) || currentBranch();
-  const diff = gitOut(["diff", "--name-only", `${base}...${branch}`]);
-  const prefixes = scopePaths(app);
-  const exts = sourceExtensions();
-  return diff
-    .split("\n")
-    .map((f) => f.trim())
-    .filter(
-      (f) =>
-        f &&
-        prefixes.some((prefix) => f.startsWith(prefix)) &&
-        exts.some((e) => f.endsWith(e)) &&
-        !looksLikeTestPath(f)
-    );
-}
-
-// Denominador de cobertura: a suíte do escopo inteiro, não o test_command da spec. Medir a
-// cobertura de uma função só pelos testes da própria spec infla o CRAP de qualquer código que a
-// suíte do app já cobre.
-function crapTestTargets(worktree: string, app: string): string[] {
-  const declared = crapConfig().scope_tests?.[app];
-  if (declared?.length) return declared;
-  const out: string[] = [];
-  for (const prefix of scopePaths(app)) {
-    const trimmed = prefix.replace(/\/$/, "");
-    if (looksLikeTestPath(prefix)) {
-      out.push(trimmed);
-      continue;
-    }
-    const candidate = `${trimmed}/tests`;
-    if (fs.existsSync(path.join(worktree, candidate))) out.push(candidate);
-  }
-  return out;
-}
+// Etapa determinística de risco: roda a suíte de cada escopo tocado com relatório JSON de
+// cobertura e pontua CRAP ((complexidade^2 * (1-cobertura)^3) + complexidade) APENAS nas funções
+// de PRODUÇÃO alteradas. Não abre sessão de modelo. CRAP é gameável por teste sem assert, então
+// aqui ele é sinal para a revisão (via {crap_top}), nunca alvo de otimização de um agente.
+//
+// Não roda mais por spec: é preparação para a revisão por FEATURE (a skill de code review), não
+// um gate do VERIFY — ver runFeatureReview. Por isso opera sobre o diff acumulado base...branch
+// no branch de trabalho atual (REPO_ROOT), não num worktree de spec: quando isto roda, as specs
+// já foram mergeadas.
 
 function readCrapReport(reviewDir: string): CrapReport | null {
   const p = path.join(reviewDir, "crap.json");
@@ -1139,117 +1072,168 @@ function crapTopText(reviewDir: string): string {
     .join("\n");
 }
 
-function runCrapStep(
-  packet: Packet,
-  run: RunState,
+// Denominador de cobertura: a suíte do escopo inteiro, não só os arquivos da feature. Medir
+// cobertura só pelo que a feature tocou infla o CRAP de código que a suíte já cobre.
+function crapTestTargets(worktree: string, app: string): string[] {
+  const declared = crapConfig().scope_tests?.[app];
+  if (declared?.length) return declared;
+  const out: string[] = [];
+  for (const prefix of scopePaths(app)) {
+    const trimmed = prefix.replace(/\/$/, "");
+    if (looksLikeTestPath(prefix)) {
+      out.push(trimmed);
+      continue;
+    }
+    const candidate = `${trimmed}/tests`;
+    if (fs.existsSync(path.join(worktree, candidate))) out.push(candidate);
+  }
+  return out;
+}
+
+function crapScopedFiles(scope: string, changedFiles: string[]): string[] {
+  const prefixes = scopePaths(scope);
+  const exts = sourceExtensions();
+  return changedFiles.filter(
+    (f) => prefixes.some((p) => f.startsWith(p)) && exts.some((e) => f.endsWith(e)) && !looksLikeTestPath(f)
+  );
+}
+
+function runCrapForFeature(
+  base: string,
+  branch: string,
   reviewDir: string,
   quiet: boolean
 ): { summary: CrapSummary; errors: string[] } | null {
   const cfg = crapConfig();
   if (!cfg.enabled || !cfg.coverage_command || !cfg.tool) return null;
 
-  const scored = crapScoredFiles(packet.app ?? "", run.branch);
-  if (!scored.length) return null;
+  const changedFiles = gitOut(["diff", "--name-only", `${base}...${branch}`])
+    .split("\n")
+    .map((f) => f.trim())
+    .filter(Boolean);
+  const touchedScopes = scopeNames().filter((scope) => crapScopedFiles(scope, changedFiles).length);
+  if (!touchedScopes.length) return null;
 
   const gate = cfg.gate ?? "warn";
   const threshold = cfg.threshold ?? 30;
-  const testTargets = crapTestTargets(run.worktree, packet.app ?? "");
+  const runtime = cfg.runtime ?? "node";
+  const interpreter = runtime === "python" ? (cfg.python ?? "python") : (cfg.node ?? "node");
+  const tool = resolveEnginePath(cfg.tool!);
+
+  fs.mkdirSync(reviewDir, { recursive: true });
+  const coverageDir = path.join(HARNESS_HOME, "coverage");
+  fs.mkdirSync(coverageDir, { recursive: true });
+
   const errors: string[] = [];
+  const notes: string[] = [];
   const summary: CrapSummary = {
     gate,
     threshold,
-    scored_files: scored,
-    test_targets: testTargets,
+    scored_files: [],
+    test_targets: [],
     coverage_json: null,
-    coverage_returncode: -1,
+    coverage_returncode: 0,
     report: null,
     total_functions: 0,
     average_crap: 0,
     high_risk: [],
     errors: [],
   };
+  let weightedSum = 0;
 
-  if (!testTargets.length) {
-    summary.note = `escopo '${packet.app}' não tem diretório de testes conhecido — configure crap.scope_tests`;
-    if (!quiet) console.log(`  AVISO (crap): ${summary.note}`);
-    return { summary, errors };
+  for (const scope of touchedScopes) {
+    const scoped = crapScopedFiles(scope, changedFiles);
+    const testTargets = crapTestTargets(REPO_ROOT, scope);
+    summary.scored_files.push(...scoped);
+    if (!testTargets.length) {
+      notes.push(`escopo '${scope}' não tem diretório de testes conhecido — configure crap.scope_tests`);
+      continue;
+    }
+    summary.test_targets.push(...testTargets);
+
+    if (!quiet) {
+      console.log(
+        `\nCRAP [${scope}] (gate: ${gate}, limiar ${threshold}) — ${scoped.length} arquivo(s), ` +
+          `cobertura medida por: ${testTargets.join(" ")}`
+      );
+    }
+
+    // Python (coverage.py) escreve exatamente no arquivo que --cov-report=json:{coverage_json}
+    // apontar. Node (vitest/jest/nyc) só deixa escolher o DIRETÓRIO de relatórios — o nome do
+    // arquivo (coverage-final.json) é fixo do reporter Istanbul — então {coverage_json} aqui
+    // recebe o diretório, e o arquivo esperado é sempre <diretório>/coverage-final.json.
+    const scopeCoverageDir = path.join(coverageDir, `feature-${scope}`);
+    const scopeCoverageJson =
+      runtime === "python" ? path.join(coverageDir, `feature-${scope}.json`) : path.join(scopeCoverageDir, "coverage-final.json");
+    const coverageCommandArg = runtime === "python" ? scopeCoverageJson : scopeCoverageDir;
+    const scopeListFile = path.join(reviewDir, `.crap-arquivos-${scope}.txt`);
+    fs.writeFileSync(scopeListFile, scoped.join("\n") + "\n", "utf-8");
+
+    const covCmd = cfg
+      .coverage_command!.replaceAll("{coverage_json}", coverageCommandArg)
+      .replaceAll("{test_targets}", testTargets.join(" "));
+    const cov = runCmd(covCmd, REPO_ROOT, cfg.timeout_ms ?? 900_000);
+    summary.coverage_returncode = cov.code;
+    summary.coverage_json = scopeCoverageJson;
+    if (!fs.existsSync(scopeCoverageJson)) {
+      notes.push(`[${scope}] relatório de cobertura não gerado (exit ${cov.code}).`);
+      continue;
+    }
+
+    const scopeCrapJson = path.join(reviewDir, `.crap-${scope}.json`);
+    const toolCmd =
+      `${interpreter} ${JSON.stringify(tool)} --coverage-json ${JSON.stringify(scopeCoverageJson)} ` +
+      `--source-dir ${JSON.stringify(REPO_ROOT)} --only-from ${JSON.stringify(scopeListFile)} ` +
+      `--threshold ${threshold} --json-out ${JSON.stringify(scopeCrapJson)}`;
+    const toolRun = runCmd(toolCmd, REPO_ROOT, cfg.timeout_ms ?? 900_000);
+    const report = fs.existsSync(scopeCrapJson)
+      ? (JSON.parse(fs.readFileSync(scopeCrapJson, "utf-8")) as CrapReport)
+      : null;
+    fs.rmSync(scopeCrapJson, { force: true });
+    fs.rmSync(scopeListFile, { force: true });
+    if (!report) {
+      notes.push(`[${scope}] crap_calculator não produziu relatório (exit ${toolRun.code}).`);
+      continue;
+    }
+
+    summary.total_functions += report.total_functions ?? 0;
+    weightedSum += (report.average_crap ?? 0) * (report.total_functions ?? 0);
+    summary.high_risk.push(...(report.high_risk_functions ?? []));
   }
 
-  fs.mkdirSync(reviewDir, { recursive: true });
-  // O coverage.json bruto passa de 1 MB e não é para leitura humana: fica fora do diretório de
-  // revisão, que guarda só o relatório derivado e a lista pontuada.
-  const coverageDir = path.join(HARNESS_HOME, "coverage");
-  fs.mkdirSync(coverageDir, { recursive: true });
-  const coverageJson = path.join(coverageDir, `${run.key.replace("/", "-")}.json`);
-  const crapJson = path.join(reviewDir, "crap.json");
-  const listFile = path.join(reviewDir, "crap-arquivos.txt");
-  fs.writeFileSync(listFile, scored.join("\n") + "\n", "utf-8");
+  summary.average_crap = summary.total_functions ? weightedSum / summary.total_functions : 0;
+  summary.high_risk.sort((a, b) => b.crap - a.crap);
+  if (notes.length) summary.note = notes.join(" | ");
+
+  fs.writeFileSync(path.join(reviewDir, "crap-arquivos.txt"), summary.scored_files.join("\n") + "\n", "utf-8");
+  fs.writeFileSync(
+    path.join(reviewDir, "crap.json"),
+    JSON.stringify(
+      { total_functions: summary.total_functions, average_crap: summary.average_crap, high_risk_functions: summary.high_risk },
+      null,
+      2
+    ),
+    "utf-8"
+  );
+  summary.report = path.relative(REPO_ROOT, path.join(reviewDir, "crap.json"));
+
+  if (!summary.total_functions) {
+    if (!quiet) console.log(`  AVISO (crap): ${summary.note ?? "nenhuma função analisada."}`);
+    return { summary, errors };
+  }
 
   if (!quiet) {
     console.log(
-      `\nCRAP (gate: ${gate}, limiar ${threshold}) — ${scored.length} arquivo(s) alterado(s), ` +
-        `cobertura medida por: ${testTargets.join(" ")}`
-    );
-  }
-
-  const covCmd = cfg
-    .coverage_command!.replaceAll("{coverage_json}", coverageJson)
-    .replaceAll("{test_targets}", testTargets.join(" "));
-  const cov = runCmd(covCmd, run.worktree, cfg.timeout_ms ?? 900_000);
-  summary.coverage_returncode = cov.code;
-  summary.coverage_json = coverageJson;
-
-  if (!fs.existsSync(coverageJson)) {
-    summary.note =
-      `o relatório de cobertura não foi gerado (exit ${cov.code}) — CRAP inconclusivo. ` +
-      `Saída: ${(cov.stdout + cov.stderr).slice(-600)}`;
-    if (!quiet) console.log(`  AVISO (crap): relatório de cobertura não gerado (exit ${cov.code}).`);
-    return { summary, errors };
-  }
-
-  // "runtime" escolhe o interpretador que roda a ferramenta (não a stack analisada, que vem de
-  // --source-dir): python para tools/crap_calculator.py (radon), node para
-  // tools/crap_calculator.ts (eslintcc). Ambos recebem os mesmos flags — o shape de saída é
-  // idêntico, então o resto do harness (readCrapReport, crapTopText) não diferencia stack.
-  const runtime = cfg.runtime ?? "python";
-  const interpreter = runtime === "node" ? (cfg.node ?? "node") : (cfg.python ?? "python");
-  const tool = resolveEnginePath(cfg.tool!);
-  const toolCmd =
-    `${interpreter} ${JSON.stringify(tool)} --coverage-json ${JSON.stringify(coverageJson)} ` +
-    `--source-dir ${JSON.stringify(run.worktree)} --only-from ${JSON.stringify(listFile)} ` +
-    `--threshold ${threshold} --json-out ${JSON.stringify(crapJson)}`;
-  const toolRun = runCmd(toolCmd, run.worktree, cfg.timeout_ms ?? 900_000);
-  const report = readCrapReport(reviewDir);
-
-  if (!report) {
-    summary.note =
-      `o crap_calculator não produziu relatório (exit ${toolRun.code}) — CRAP inconclusivo. ` +
-      `Saída: ${(toolRun.stdout + toolRun.stderr).slice(-600)}`;
-    if (!quiet) console.log(`  AVISO (crap): ${summary.note}`);
-    return { summary, errors };
-  }
-
-  summary.report = path.relative(REPO_ROOT, crapJson);
-  summary.total_functions = report.total_functions ?? 0;
-  summary.average_crap = report.average_crap ?? 0;
-  summary.high_risk = report.high_risk_functions ?? [];
-
-  if (!quiet) {
-    console.log(
-      `  ${summary.total_functions} função(ões) pontuada(s), CRAP médio ${summary.average_crap.toFixed(2)} — ` +
-        `${summary.high_risk.length} acima de ${threshold}`
+      `\nCRAP (feature): ${summary.total_functions} função(ões) pontuada(s), CRAP médio ` +
+        `${summary.average_crap.toFixed(2)} — ${summary.high_risk.length} acima de ${threshold}`
     );
     for (const f of summary.high_risk.slice(0, cfg.top_n ?? 5)) {
-      console.log(
-        `    ${f.file} -> ${f.name}() CRAP ${f.crap.toFixed(2)} (comp ${f.comp}, cov ${f.cov.toFixed(1)}%)`
-      );
+      console.log(`    ${f.file} -> ${f.name}() CRAP ${f.crap.toFixed(2)} (comp ${f.comp}, cov ${f.cov.toFixed(1)}%)`);
     }
   }
 
   if (summary.high_risk.length) {
-    const msg =
-      `${summary.high_risk.length} função(ões) alterada(s) com CRAP > ${threshold} — ` +
-      `ver ${summary.report}`;
+    const msg = `${summary.high_risk.length} função(ões) alterada(s) com CRAP > ${threshold} — ver ${summary.report}`;
     if (gate === "block") {
       errors.push(msg);
       summary.errors.push(msg);
@@ -1461,39 +1445,13 @@ async function cmdPostVerify(args: string[]): Promise<void> {
 
 // --------------------------------------------------------------------------- review-feature
 
-// Agrega o CRAP de todas as specs já revisadas da feature (uma pasta reviews/<NN>/crap.json por
-// spec) num único top-N para o prompt da revisão por feature. Specs sem crap.json (CRAP
-// desligado, ou spec sem cobertura configurada) são ignoradas, não tratadas como erro.
-function crapTopTextForFeature(featureDir: string, topN: number): string {
-  const reviewsDir = path.join(featureDir, "reviews");
-  if (!fs.existsSync(reviewsDir)) {
-    return "(sem relatório de CRAP nesta feature — ignore este critério)";
-  }
-  const all: Array<CrapFunction & { spec: string }> = [];
-  for (const entry of fs.readdirSync(reviewsDir)) {
-    if (entry === "feature") continue;
-    const report = readCrapReport(path.join(reviewsDir, entry));
-    for (const fn of report?.high_risk_functions ?? []) all.push({ ...fn, spec: entry });
-  }
-  if (!all.length) {
-    return "(nenhuma função acima do limiar de CRAP em nenhuma spec já revisada desta feature)";
-  }
-  return all
-    .sort((a, b) => b.crap - a.crap)
-    .slice(0, topN)
-    .map(
-      (f) =>
-        `- [spec ${f.spec}] ${f.file} -> ${f.name}() — CRAP ${f.crap.toFixed(2)} (complexidade ${f.comp}, cobertura ${f.cov.toFixed(1)}%)`
-    )
-    .join("\n");
-}
-
-// Revisão automática por FEATURE, não por spec: code_review/ponytail_review rodam UMA vez sobre
-// o diff acumulado de todas as specs já mergeadas na branch de trabalho, em vez de repetir os
-// mesmos jobs (cada um uma sessão sonnet completa, lendo diff+spec do zero) a cada spec — que é
-// o que fazia a revisão automática ser o maior custo repetido do autorun. Diferença central em
-// relação a runPostVerify: aqui as specs já foram mergeadas, então "gate: block" não impede
-// merge nenhum — é sinal para quem orquestra revisar, não enforcement.
+// Revisão automática por FEATURE, não por spec: CRAP e code_review rodam UMA vez sobre o diff
+// acumulado de todas as specs já mergeadas na branch de trabalho, em vez de repetir os mesmos
+// passos (cada um custando sessão/suíte de teste inteira) a cada spec — que era o maior custo
+// repetido do autorun. CRAP roda primeiro, aqui mesmo: ele é preparação para a skill de code
+// review (via {crap_top}), não um gate mecânico do VERIFY. Diferença central em relação a
+// runPostVerify: aqui as specs já foram mergeadas, então "gate: block" não impede merge nenhum —
+// é sinal para quem orquestra revisar, não enforcement.
 async function runFeatureReview(
   feature: string,
   base: string,
@@ -1524,13 +1482,18 @@ async function runFeatureReview(
   }
 
   fs.mkdirSync(reviewDir, { recursive: true });
+
+  const errors: string[] = [];
+  const crapResult = runCrapForFeature(base, branch, reviewDir, false);
+  if (crapResult) errors.push(...crapResult.errors);
+
   const vars: Record<string, string> = {
     feature,
     branch,
     base,
     head_sha: headSha,
     out: path.relative(REPO_ROOT, reviewDir),
-    crap_top: crapTopTextForFeature(featureDir, crapConfig().top_n ?? 5),
+    crap_top: crapTopText(reviewDir),
   };
 
   console.log(
@@ -1544,7 +1507,6 @@ async function runFeatureReview(
     jobs.map((job) => runClaudeJob(job, vars, cfg, path.join(reviewDir, `${job.id}.log`)))
   );
 
-  const errors: string[] = [];
   const verdict = readReviewVerdict(reviewDir);
   for (const r of results) {
     if (r.id === "code_review") r.blocking_findings = verdict.blocking;
@@ -2524,7 +2486,10 @@ function pythonImporta(mod: string): boolean {
 }
 
 function nodeModuloResolvivel(mod: string): boolean {
-  return runCmd(`node -e "require.resolve(${JSON.stringify(mod)})"`, REPO_ROOT, 30_000).code === 0;
+  // runCmd roda via `/bin/bash -c`, então o argumento de -e já vai entre aspas duplas do shell —
+  // JSON.stringify(mod) aninharia aspas duplas dentro de aspas duplas e quebraria o parsing.
+  // Aspas simples na literal JS passam ilesas por dentro de aspas duplas do bash.
+  return runCmd(`node -e "require.resolve('${mod}')"`, REPO_ROOT, 30_000).code === 0;
 }
 
 function subdiretorios(rel: string): string[] {
@@ -2662,7 +2627,47 @@ function detectaLint(linguagem: string, pendencias: string[]): string | null {
 // Chute informado do comando de cobertura Node — como o de Python, é ponto de revisão humana
 // (ver ressalva no README). Prioriza o runner já declarado em package.json; sem nenhum dos três,
 // não adivinha um comando que provavelmente erra.
+// Sinal primário: o PROJECT_MAP.md do repo (gerado pela skill project-map) já registra o
+// framework de teste com evidência real — "## 6. Testes § Comando exato" — em vez de suposição.
+// Reaproveitar isso evita redetectar às cegas o que já foi verificado por outra skill.
+function testRunnerFromProjectMap(): "vitest" | "jest" | "nyc" | "c8" | null {
+  const mapPath = path.join(REPO_ROOT, "PROJECT_MAP.md");
+  if (!fs.existsSync(mapPath)) return null;
+  let content: string;
+  try {
+    content = fs.readFileSync(mapPath, "utf-8");
+  } catch {
+    return null;
+  }
+  const secao = content.split(/^## \d+\.\s+/m).find((s) => /^Testes\b/.test(s));
+  if (!secao) return null;
+  for (const runner of ["vitest", "jest", "nyc", "c8"] as const) {
+    if (new RegExp(`\\b${runner}\\b`, "i").test(secao)) return runner;
+  }
+  return null;
+}
+
+// {coverage_json} aqui é sempre um DIRETÓRIO (ver runCrapForFeature): vitest/jest/nyc só deixam
+// escolher onde escrever o relatório, não o nome do arquivo — o reporter Istanbul sempre grava
+// coverage-final.json dentro do diretório indicado.
+function coverageCommandFor(runner: "vitest" | "jest" | "nyc" | "c8"): string {
+  switch (runner) {
+    case "vitest":
+      return "npx vitest run --coverage --coverage.provider=istanbul --coverage.reporter=json --coverage.reportsDirectory={coverage_json} {test_targets}";
+    case "jest":
+      return "npx jest --coverage --coverageReporters=json --coverageDirectory={coverage_json} {test_targets}";
+    case "nyc":
+    case "c8":
+      return "npx nyc --reporter=json --report-dir={coverage_json} -- <comando de teste do repo> {test_targets}";
+  }
+}
+
 function detectaCoverageCommandNode(): string | null {
+  const runnerFromMap = testRunnerFromProjectMap();
+  if (runnerFromMap) return coverageCommandFor(runnerFromMap);
+
+  // Sem PROJECT_MAP.md, ou sem menção a um runner conhecido nele: cai para o que
+  // package.json declara (sinal mais fraco — presença de dependência, não uso confirmado).
   const pkgPath = path.join(REPO_ROOT, "package.json");
   if (!fs.existsSync(pkgPath)) return null;
   let pkg: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
@@ -2672,15 +2677,9 @@ function detectaCoverageCommandNode(): string | null {
     return null;
   }
   const deps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
-  if (deps.vitest) {
-    return "npx vitest run --coverage --coverage.provider=istanbul --coverage.reporter=json {test_targets}";
-  }
-  if (deps.jest) {
-    return "npx jest --coverage --coverageReporters=json {test_targets}";
-  }
-  if (deps.nyc || deps.c8) {
-    return "npx nyc --reporter=json -- <comando de teste do repo> {test_targets}";
-  }
+  if (deps.vitest) return coverageCommandFor("vitest");
+  if (deps.jest) return coverageCommandFor("jest");
+  if (deps.nyc || deps.c8) return coverageCommandFor("nyc");
   return null;
 }
 
@@ -3030,13 +3029,13 @@ function diagnostico(): Problema[] {
     for (const marca of ["{coverage_json}", "{test_targets}"]) {
       if (!cov.includes(marca)) add("ERRO", "crap.coverage_command", `não contém ${marca}.`);
     }
-    if ((crap.runtime ?? "python") === "node") {
+    if ((crap.runtime ?? "node") === "python") {
+      if (!pythonImporta("radon")) add("ERRO", "crap", "`radon` não importável — instale-o ou desligue crap.enabled.");
+      if (!pythonImporta("pytest_cov")) add("ERRO", "crap", "`pytest-cov` não importável — instale-o ou desligue crap.enabled.");
+    } else {
       if (!nodeModuloResolvivel("eslintcc")) {
         add("ERRO", "crap", "`eslintcc` não resolvível — instale-o (devDependency) ou desligue crap.enabled.");
       }
-    } else {
-      if (!pythonImporta("radon")) add("ERRO", "crap", "`radon` não importável — instale-o ou desligue crap.enabled.");
-      if (!pythonImporta("pytest_cov")) add("ERRO", "crap", "`pytest-cov` não importável — instale-o ou desligue crap.enabled.");
     }
   }
 
