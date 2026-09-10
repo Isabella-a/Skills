@@ -44,10 +44,10 @@ linguagem natural — o Claude reconhece o pedido e ativa a skill certa sozinho.
 
 ## Skills disponíveis
 
-A maioria das skills abaixo é genérica, no espírito descrito acima. Três exceções —
-`aws-debugger`, `code-review-skill` e `drizzle-migration` — foram trazidas de um monorepo
-específico (infraestrutura AWS, stack de código e uma migração pontual daquele projeto) e estão
-marcadas como tal na tabela; use-as como referência, não como padrão a copiar para outro repo.
+A maioria das skills abaixo é genérica, no espírito descrito acima. Duas exceções —
+`aws-debugger` e `code-review-skill` — foram trazidas de um monorepo específico (infraestrutura
+AWS e stack de código daquele projeto) e estão marcadas como tal na tabela; use-as como
+referência, não como padrão a copiar para outro repo.
 
 **Comece por `project-map`.** As outras quatro skills deste plugin dão conselho genérico até
 saberem em que repositório estão — `project-map` é o que muda isso. Rode uma vez por repositório
@@ -69,7 +69,6 @@ usa em vez de uma genérica, `nestjs-modular-monolith` respeitar o ORM já escol
 | [`jira-assistant`](skills/jira-assistant) | Gerencia issues do Jira via Atlassian MCP — busca, cria, atualiza, transiciona status, comentários e KTLOs. Detecta a configuração do workspace automaticamente (`jira-config.md`). | Peça para criar/buscar/atualizar uma issue, mover para outro status, comentar ou "cadastrar um KTLO". |
 | [`aws-debugger`](skills/aws-debugger) ⚠️ | Investiga erros/incidentes do One Portal (backend NestJS em ECS, frontend Next.js em Amplify) via CloudWatch Logs, alternando entre as contas AWS de develop e produção via SSO. | Peça para investigar um erro em produção/develop ou ver logs de um request específico. **Específica da infraestrutura do One Portal.** |
 | [`code-review-skill`](skills/code-review-skill) ⚠️ | Revisão de código com o checklist e as convenções do stack do One Portal (NestJS 11 com Either/Unit of Work/pg-boss, React 19 + Next.js 16, TanStack Query v5). | Ativa ao revisar PRs/mudanças nesse stack. **Específica do One Portal** — para revisão genérica use a `code-review` do plugin `mattpocock-skills`. |
-| [`drizzle-migration`](skills/drizzle-migration) ⚠️ | Retoma e registra o progresso de uma migração pontual TypeORM → Drizzle do backend do One Portal, com relatório de estado gerado a partir do código. | Peça "onde paramos na migração do drizzle" ou "checkpoint da migração". **Específica dessa migração**, não serve para dúvidas gerais de Drizzle. |
 
 ### `project-map` em detalhe
 
@@ -80,6 +79,11 @@ arquitetura e estrutura real, estilos/design system, testes, ambiente local, CI/
 segurança e configuração, observabilidade/feature flags, convenções de código observadas,
 integrações externas e fluxo de trabalho. Se adapta sozinha a monorepo (uma linha por workspace)
 ou projeto único (uma linha só).
+
+O documento abre com uma **Seção 0 — índice de leitura por escopo** (progressive disclosure):
+uma tabela fixa que diz, por tipo de tarefa, quais seções são relevantes. `sdd` e `spec-harness`
+leem essa seção primeiro e depois só as seções que o escopo da spec exige — nunca o arquivo
+inteiro a cada fase/spec, que é o padrão de leitura mais caro do fluxo `sdd`/`spec-harness`.
 
 ### `sdd` + `spec-harness` em detalhe
 

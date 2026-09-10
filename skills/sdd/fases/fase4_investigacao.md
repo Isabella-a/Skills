@@ -2,9 +2,10 @@
 
 Lance **dois agentes Explore simultaneamente**. Aguarde ambos antes de prosseguir para a Fase 5.
 
-Antes de montar os prompts, releia `PROJECT_MAP.md`: os caminhos, camadas e padrões que ele
-declara é que dizem **onde** os agentes devem olhar. Substitua os `<...>` abaixo por valores
-concretos vindos dele — um prompt genérico devolve um relatório genérico.
+Antes de montar os prompts, releia `PROJECT_MAP.md § Arquitetura e estrutura real` e
+`§ Convenções de código observadas` — não o arquivo inteiro: os caminhos, camadas e padrões que
+essas duas seções declaram é que dizem **onde** os agentes devem olhar. Substitua os `<...>`
+abaixo por valores concretos vindos delas — um prompt genérico devolve um relatório genérico.
 
 ---
 
