@@ -217,7 +217,12 @@ interface ScaffoldConfig {
   test_command_template?: string;
 }
 
+interface DocsConfig {
+  por_fase?: Partial<Record<Phase, string[]>>;
+}
+
 interface HarnessConfig {
+  docs?: DocsConfig;
   scaffold?: ScaffoldConfig;
   scopes?: Record<string, { paths?: string[] } | string>;
   source_extensions?: string[];
@@ -2259,6 +2264,50 @@ function autorunLogDir(key: string): string {
   return dir;
 }
 
+// A documentação do repositório é lida sob demanda pela sessão da fase, e é o item mais caro do
+// contexto quando o repo tem `docs/` grande: o cache reenvia o que foi lido em TODO turno da
+// fase. A allowlist diz a cada fase quais docs importam para ela — RED só escreve teste e não
+// precisa do doc de deploy nem do de admin. Sem `docs.por_fase` no perfil, nada é injetado e o
+// prompt fica como era.
+function blocoDeDocsDaFase(phase: Phase): string {
+  const docs = CFG().docs?.por_fase?.[phase];
+  if (!docs?.length) return "";
+  return (
+    "\n\nDocumentação a ler NESTA fase (e só ela):\n  - " +
+    docs.join("\n  - ") +
+    "\nOs demais arquivos de `docs/` estão fora do escopo desta fase — não os abra. " +
+    "Em arquivo grande, use grep/sed na seção relevante em vez de ler o arquivo inteiro."
+  );
+}
+
+// Falha de ambiente não é enigma a resolver: se o comando de teste sai 126/127 dentro do
+// worktree, é porque o binário não é rastreado pelo git nem foi copiado para lá (ver o doctor
+// check `scaffold.test_command_template` mais abaixo) — o modelo não tem como consertar isso de
+// dentro do worktree, e cada turno gasto procurando o arquivo é turno pago em vão. Abortar cedo
+// devolve o controle a quem pode corrigir a config.
+const BLOCO_FALHA_DE_AMBIENTE =
+  "\n\nSe o comando de teste sair 126 ou 127 (comando não encontrado / sem permissão), ou se o " +
+  "runner reclamar de arquivo do próprio harness que não existe: PARE imediatamente e responda " +
+  "só o comando e o código de saída. Isso é falha do harness montando o worktree, não da sua " +
+  "implementação — você não tem como corrigir daqui. NÃO procure o arquivo, não rode `find`, não " +
+  "invente comando alternativo, não instale nada.";
+
+// Os arquivos que a sessão precisa ler para acertar o padrão do repositório. Sem isso a fase
+// descobre sozinha onde as coisas ficam, gastando chamadas de Read/Grep/Glob só para orientação —
+// e cada fase paga de novo porque RED, GREEN e VERIFY não compartilham contexto entre si.
+// `capabilities.read.paths` é permissão ("você PODE ler"), o que é diferente de instrução
+// ("leia ISTO, é o padrão a seguir") — daí o bloco sair de `required_reads`, não de `read_paths`.
+function blocoDeArquivosDeReferencia(packet: Packet): string {
+  const reads = (packet.required_reads ?? []).filter(Boolean);
+  if (!reads.length) return "";
+  return (
+    "\n\nLeia estes arquivos ANTES de explorar o repositório por conta própria — são a spec e o " +
+    "padrão a seguir:\n  - " +
+    reads.join("\n  - ") +
+    "\nSe depois deles ainda faltar contexto, explore; mas não comece pela exploração."
+  );
+}
+
 // Sessão headless que implementa UMA fase dentro do worktree da spec. O modelo aqui é o barato
 // (sonnet por padrão): o contexto dele é o packet daquela fase, e o hook PreToolUse do harness
 // continua valendo porque o cwd é o worktree com execução ativa.
@@ -2273,17 +2322,21 @@ function runImplementer(
   const template = cfg.prompts?.[phase];
   if (!template) die(`implementer.prompts.${phase} ausente em ${path.relative(REPO_ROOT, CONFIG_PATH)}`);
 
-  const prompt = interpolate(template, {
-    spec: packet.source_spec ?? "",
-    phase,
-    app: packet.app ?? "",
-    worktree: run.worktree,
-    requirements: (packet.done_when?.requirements ?? []).join(", "),
-    write_paths: (packet.capabilities?.write?.paths ?? []).join("\n  - "),
-    read_paths: (packet.capabilities?.read?.paths ?? []).join("\n  - "),
-    test_command: (packet.validation?.commands ?? [])[0]?.run ?? "",
-    feedback: feedback || "(primeira tentativa — nenhum gate reprovado ainda)",
-  });
+  const prompt =
+    interpolate(template, {
+      spec: packet.source_spec ?? "",
+      phase,
+      app: packet.app ?? "",
+      worktree: run.worktree,
+      requirements: (packet.done_when?.requirements ?? []).join(", "),
+      write_paths: (packet.capabilities?.write?.paths ?? []).join("\n  - "),
+      read_paths: (packet.capabilities?.read?.paths ?? []).join("\n  - "),
+      test_command: (packet.validation?.commands ?? [])[0]?.run ?? "",
+      feedback: feedback || "(primeira tentativa — nenhum gate reprovado ainda)",
+    }) +
+    blocoDeArquivosDeReferencia(packet) +
+    blocoDeDocsDaFase(phase) +
+    BLOCO_FALHA_DE_AMBIENTE;
 
   const args = [
     "-p",
@@ -2935,6 +2988,22 @@ function binarioDoComando(cmd: string): string {
   return cmd.trim().split(/\s+/)[0];
 }
 
+function gitRastreia(rel: string): boolean {
+  const r = spawnSync("git", ["-C", REPO_ROOT, "ls-files", "--error-unmatch", rel], { stdio: "ignore" });
+  return r.status === 0;
+}
+
+// `applyWorktreeExtras` copia/linka caminhos inteiros, então um arquivo é coberto tanto pela sua
+// própria entrada quanto pela do diretório que o contém.
+function copiadoParaOWorktree(rel: string): boolean {
+  const cfg = CFG();
+  const extras = [...(cfg.worktree?.copy_paths ?? []), ...(cfg.worktree?.link_paths ?? [])];
+  return extras.some((e) => {
+    const norm = e.replace(/\/+$/, "");
+    return rel === norm || rel.startsWith(`${norm}/`);
+  });
+}
+
 // Diagnóstico do perfil do repo: o que impede uma spec de rodar (ERRO) e o que apenas degrada
 // (AVISO). É a lista fechada que um agente pode usar para terminar a configuração sozinho.
 function diagnostico(): Problema[] {
@@ -2982,6 +3051,22 @@ function diagnostico(): Problema[] {
     add("ERRO", "scaffold.test_command_template", "não contém {test_paths} — o comando ignoraria os testes da spec.");
   } else if (!temBinario(binarioDoComando(tmpl))) {
     add("ERRO", "scaffold.test_command_template", `binário '${binarioDoComando(tmpl)}' não está no PATH desta sessão.`);
+  } else {
+    // O worktree da spec nasce da BRANCH, não da árvore de trabalho: um comando de teste que
+    // aponta para um arquivo do repo não rastreado pelo git simplesmente não existe lá, e a fase
+    // morre com exit 127 — depois de a sessão gastar turnos caçando o arquivo (`find`, `git
+    // ls-files`, `cat`) sem conseguir corrigir, porque quem monta o worktree é o harness, não ela.
+    // `copy_paths`/`link_paths` são a saída legítima para o que é da máquina (ex.: um .env).
+    const bin = binarioDoComando(tmpl);
+    const doRepo = !path.isAbsolute(bin) && bin.includes("/") && fs.existsSync(path.join(REPO_ROOT, bin));
+    if (doRepo && !gitRastreia(bin) && !copiadoParaOWorktree(bin)) {
+      add(
+        "ERRO",
+        "scaffold.test_command_template",
+        `'${bin}' existe aqui mas não é rastreado pelo git nem está em worktree.copy_paths/link_paths — ` +
+          "o worktree da spec nasce da branch, então a fase sairia 127. Versione o arquivo ou declare-o em worktree.copy_paths."
+      );
+    }
   }
 
   const validadores = globalValidators();
@@ -3053,6 +3138,14 @@ function diagnostico(): Problema[] {
   const impl = (cfg as { implementer?: { prompts?: Record<string, string> } }).implementer;
   for (const fase of ["red", "green"]) {
     if (!impl?.prompts?.[fase]) add("ERRO", `implementer.prompts.${fase}`, "ausente — o autorun não teria o que mandar para a sessão da fase.");
+  }
+
+  // A allowlist só ajuda se apontar para arquivo que existe: um caminho podre vira instrução para
+  // ler algo inexistente, e a sessão gasta turnos procurando.
+  for (const [fase, docs] of Object.entries((cfg.docs as DocsConfig | undefined)?.por_fase ?? {})) {
+    for (const rel of docs ?? []) {
+      if (!repoTem(rel)) add("ERRO", `docs.por_fase.${fase}`, `arquivo declarado não existe: ${rel}`);
+    }
   }
 
   return problemas;

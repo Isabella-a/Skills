@@ -40,6 +40,17 @@ diante. Se `PROJECT_MAP.md` não existir, pergunte ao usuário se quer gerá-lo 
 (`Skill(skill: "project-map")`) antes de continuar — melhora a precisão dos gates e da revisão.
 Se recusar, prossiga só com `harness.config.json`.
 
+### `docs.por_fase` — a mesma ideia para o resto de `docs/`
+
+`PROJECT_MAP.md` cobre stack/arquitetura, mas um repo pode ter outra documentação grande fora
+dele (guia de telas, catálogo de domínio, runbook) que o `CLAUDE.md` importa com `@` — nesse caso
+ela é reenviada pelo cache em **todo turno** de **cada fase**, e costuma ser o maior item de custo
+de uma spec inteira. `docs.por_fase` no `harness.config.json` (ver
+`templates/harness.config.template.json § docs`) declara, por fase (`red`/`green`/`verify`),
+só os arquivos que aquela fase precisa; o `autorun` injeta essa lista no prompt da sessão como
+instrução explícita ("leia só isto"), e o resto de `docs/` fica fora do escopo dela. Opcional e
+sem custo quando ausente — preencha só se o repo tiver esse tipo de doc grande.
+
 Ambiente: ative o ambiente do repositório (venv/conda, nvm, etc. — ver `CLAUDE.md`/`AGENTS.md`
 dele) antes de qualquer teste ou lint; o harness herda o ambiente da sessão que o invoca.
 
@@ -178,6 +189,13 @@ exato. Os caminhos possíveis:
   packet expandido daquela fase; depois `autorun` para seguir.
 - **a spec está errada**: pare. Corrigir a spec é decisão sua, não do implementador — e não
   afrouxe `contract`/`forbidden.behaviors` do packet para passar o gate.
+- **o log da fase termina com exit 126/127 e uma mensagem curta**: falha de ambiente, não de
+  código — o binário do `test_command` não existe dentro do worktree (não versionado nem coberto
+  por `worktree.copy_paths`/`link_paths`). O prompt da fase instrui a sessão a parar de imediato
+  nesse caso em vez de caçar o arquivo com `find`/`git ls-files`, porque ela não pode consertar a
+  montagem do worktree de dentro dele — quem corrige é você, no `harness.config.json`. O `doctor`
+  já pega a maioria desses casos antes do autorun (`scaffold.test_command_template`), mas um
+  binário adicionado depois do último `doctor` escapa até a próxima checagem.
 
 ## Revisão automática — por FEATURE, não por spec
 
