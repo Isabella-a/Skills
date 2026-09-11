@@ -2,8 +2,16 @@
   "schema_version": 2,
   "_comment": "Template de perfil do SDD Spec Harness. Copiado para .claude/spec_harness/harness.config.json por `init-repo`. O motor é global (~/.claude/spec_harness) e não tem nada de stack hardcoded: é ESTE arquivo que adapta o harness ao repositório. Ajuste tudo marcado com TODO antes do primeiro autorun.",
   "scaffold": {
-    "_comment": "Comando de teste que o scaffold-packet escreve no packet da spec. {test_paths} = os arquivos de teste da seção '## Arquivos permitidos'. TODO: ajuste ao runner deste repo (ex.: 'npm test -- {test_paths}', 'go test ./...', 'pytest -q {test_paths}'). O comando precisa falhar (exit != 0) quando o teste da fase RED falha, e não abortar na coleta.",
+    "_comment": "Comando de teste que o scaffold-packet escreve no packet da spec. {test_paths} = os arquivos de teste da seção '## Arquivos permitidos'. TODO: ajuste ao runner deste repo (ex.: 'npm test -- {test_paths}', 'go test ./...', 'pytest -q {test_paths}'). O comando precisa falhar (exit != 0) quando o teste da fase RED falha, e não abortar na coleta. O binário do comando precisa estar rastreado pelo git (ou em worktree.copy_paths/link_paths) — o worktree da spec nasce da branch, não da árvore de trabalho, e o doctor reprova um binário só local para evitar a fase morrendo com exit 127 no meio do autorun.",
     "test_command_template": "pytest -q --no-cov -p no:cacheprovider {test_paths} -m \"not llm_integration\""
+  },
+  "docs": {
+    "_comment": "Opcional. Injeta no prompt de cada fase a lista exata de docs de `docs/` (ou onde o repo guardar convenções) que ELA precisa — o resto de `docs/` fica fora do escopo da fase e a sessão não lê. Sem esta seção nada é injetado, sem custo nenhum. Vale a pena quando o repo tem doc grande (dezenas de KB) que a sessão releria em todo turno da fase via @import do CLAUDE.md: essa releitura, paga pelo cache a cada turno, costuma ser o maior item de custo do autorun num repo assim. TODO: preencha só se este repo tiver esse tipo de doc; caso contrário apague a seção inteira.",
+    "por_fase": {
+      "red": [],
+      "green": [],
+      "verify": []
+    }
   },
   "scopes": {
     "_comment": "'app' do packet. Uma spec toca UM escopo. 'paths' = prefixos que o escopo pode ler/escrever; prefixos repetidos entre escopos são compartilhados e não geram erro de cruzamento. TODO: troque pelos escopos reais deste repo.",

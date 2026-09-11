@@ -42,6 +42,14 @@ o comando falha: palpite de escopo é pior que erro explícito.
    relevante). Leitura ampla é o que faz a sessão da fase custar caro — o mesmo vale para
    `PROJECT_MAP.md`: nunca o arquivo inteiro, só as seções que a Seção 0 dele indica para o `app`
    deste packet (ver `SKILL.md` § `PROJECT_MAP.md` — leitura escopada).
+
+   `required_reads` (ver "Contrato de interface entre specs" abaixo) e `context_paths` cumprem
+   papéis diferentes, apesar de parecidos: `capabilities.read.paths` — derivado de
+   `context_paths` — é **permissão** ("você PODE ler isto"); `required_reads` é **instrução**
+   ("leia ISTO antes de explorar por conta própria"). O `autorun` injeta `required_reads` como
+   bloco explícito no prompt da fase, porque sem essa instrução a sessão gasta várias chamadas de
+   `Read`/`Grep`/`Glob` só se orientando no repositório — e paga esse custo de novo em cada fase,
+   já que RED, GREEN e VERIFY não compartilham contexto entre si.
 4. **`phases.<fase>.requirements`** — recorte de IDs por fase, se a spec for grande. Vazio =
    todos os IDs.
 5. **`phases.<fase>.artifacts` / `.extra_commands`** — contratos estruturais e validações extras
