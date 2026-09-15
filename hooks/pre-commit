@@ -10,5 +10,16 @@ if ! git diff --quiet -- skills; then
   exit 1
 fi
 
+if ! command -v node >/dev/null 2>&1; then
+  echo "Node.js is required to build the Codex plugin bundle."
+  exit 1
+fi
+
+# Keep the published Codex bundle and its cachebuster in the same commit as the skill source.
 node scripts/sync-codex-plugin.mjs --cachebuster
-git add .agents/plugins/plugins/isabella
+git add -- .agents/plugins/plugins/isabella
+
+if git diff --cached --quiet -- .agents/plugins/plugins/isabella; then
+  echo "Codex plugin bundle was not staged."
+  exit 1
+fi
