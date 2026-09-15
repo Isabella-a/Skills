@@ -46,10 +46,12 @@ o comando falha: palpite de escopo é pior que erro explícito.
    `required_reads` (ver "Contrato de interface entre specs" abaixo) e `context_paths` cumprem
    papéis diferentes, apesar de parecidos: `capabilities.read.paths` — derivado de
    `context_paths` — é **permissão** ("você PODE ler isto"); `required_reads` é **instrução**
-   ("leia ISTO antes de explorar por conta própria"). O `autorun` injeta `required_reads` como
-   bloco explícito no prompt da fase, porque sem essa instrução a sessão gasta várias chamadas de
-   `Read`/`Grep`/`Glob` só se orientando no repositório — e paga esse custo de novo em cada fase,
-   já que RED, GREEN e VERIFY não compartilham contexto entre si.
+   ("leia ISTO antes de explorar por conta própria"). Sem essa instrução a sessão gasta várias
+   chamadas de `Read`/`Grep`/`Glob` só se orientando no repositório. O `autorun` injeta
+   `required_reads` (e `docs.por_fase`, ver `SKILL.md`) como bloco explícito no prompt **só na
+   primeira invocação da sessão da spec** — hoje o RED, que abre a sessão que o GREEN retoma (ver
+   `SKILL.md` § Sessão reaproveitada): reenviar esses blocos numa retomada seria contexto novo
+   pago à toa, pelo mesmo motivo que releituras não precisam se repetir.
 4. **`phases.<fase>.requirements`** — recorte de IDs por fase, se a spec for grande. Vazio =
    todos os IDs.
 5. **`phases.<fase>.artifacts` / `.extra_commands`** — contratos estruturais e validações extras
@@ -65,7 +67,7 @@ unificado. Esses arquivos são gerados: editar um deles é trabalho perdido no p
 | escreve | `test_paths` | `impl_paths` | nada |
 | lê | spec + `context_paths` + testes + produção (igual nas três) | idem | idem |
 | validação | `test_command` **falhando** pelo motivo declarado | `test_command` passando + `ruff check` | `test_command` + `ruff check` + revisão automática |
-| sessão de modelo | sim | sim | não |
+| sessão de modelo | sim (abre a sessão) | sim (retoma a do RED) | não |
 
 O gate de RED recusa escrita em produção e o de GREEN recusa escrita em teste — pelos
 `test_markers` da config, não por convenção de nome.
