@@ -23,7 +23,7 @@ Dentro do Claude Code, em qualquer repositório:
 /plugin marketplace add anthropics/claude-plugins-official
 /plugin marketplace add DietrichGebert/ponytail
 /plugin marketplace add Isabella-a/Skills
-/plugin install claude-skills@isabella-a
+/plugin install isabella@isabella-a
 ```
 
 Não é preciso `git clone` nem rodar nenhum script — o Claude Code busca e mantém o plugin
@@ -38,7 +38,7 @@ primeiros comandos.
 /plugin
 ```
 
-Abra a lista de plugins instalados e confirme `claude-skills`. Ou digite `/` em qualquer
+Abra a lista de plugins instalados e confirme `isabella`. Ou digite `/` em qualquer
 repositório para ver as skills na lista de comandos, ou simplesmente descreva a tarefa em
 linguagem natural — o Claude reconhece o pedido e ativa a skill certa sozinho.
 
@@ -96,7 +96,7 @@ execução em um repositório novo, elas se auto-configuram:
    e registrar o hook de enforcement de path — nada disso precisa ser configurado manualmente.
 
 Este plugin declara duas dependências reais (`.claude-plugin/plugin.json`), instaladas junto com
-`claude-skills` desde que as marketplaces delas já tenham sido adicionadas (ver Instalação
+`isabella` desde que as marketplaces delas já tenham sido adicionadas (ver Instalação
 acima):
 
 - **`mattpocock-skills`** — fornece `grilling` (entrevista o usuário antes de gerar a spec, usada
@@ -112,7 +112,7 @@ Além dessas, uma opcional e não gerenciada por este plugin: skill/MCP de rastr
 
 ```
 /plugin marketplace update isabella-a
-/plugin update claude-skills@isabella-a
+/plugin update isabella@isabella-a
 ```
 
 O Claude Code não avisa sozinho quando sai uma versão nova — ele só atualiza quando você roda os

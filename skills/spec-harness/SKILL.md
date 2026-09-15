@@ -270,7 +270,7 @@ sessão sobre o mesmo diff — evita abrir uma segunda sessão só para reler o 
 - **Passada 2** (`ponytail:ponytail-review`) — focada só em over-engineering (dependência
   desnecessária, abstração especulativa, flexibilidade morta).
 
-**Atenção:** `code-review-skill` **não** é dependência deste plugin (`claude-skills`) — é uma
+**Atenção:** `code-review-skill` **não** é dependência deste plugin (`isabella`) — é uma
 skill de stack específico (ver README) que precisa estar instalada separadamente no ambiente que
 roda `review-feature`. Sem ela, troque a Passada 1 de volta para `mattpocock-skills:code-review`
 (genérica, essa sim dependência garantida do plugin) no `harness.config.json` do repositório.

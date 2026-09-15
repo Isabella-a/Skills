@@ -8,7 +8,7 @@
   "allowCrossMarketplaceDependenciesOn": ["claude-plugins-official", "ponytail"],
   "plugins": [
     {
-      "name": "claude-skills",
+      "name": "isabella",
       "source": "./",
       "description": "project-map mapeia o repositório para dar contexto real às demais: referências de arquitetura (NestJS, monorepos), boas práticas React/Next.js e o fluxo sdd + spec-harness (specs testáveis com TDD e enforcement de path).",
       "version": "1.1.0",

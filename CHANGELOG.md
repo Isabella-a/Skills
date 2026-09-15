@@ -3,9 +3,13 @@
 Convenção: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e
 [SemVer](https://semver.org/lang/pt-BR/). O Claude Code **não avisa automaticamente** quem já
 instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace update isabella-a` +
-`/plugin update claude-skills@isabella-a`, confira esta página, especialmente em bump de major.
+`/plugin update isabella@isabella-a`, confira esta página, especialmente em bump de major.
 
 ## [Não lançado]
+
+- Renomeia o plugin de `claude-skills` para `isabella` (`.claude-plugin/plugin.json` e
+  `marketplace.json`) — o prefixo de invocação das skills passa a ser `isabella:sdd` etc. Quem já
+  tinha instalado precisa desinstalar `claude-skills@isabella-a` e instalar `isabella@isabella-a`.
 
 - `spec-harness`: corte no consumo de token por spec; CRAP passa a cobrir também TS/JS via
   `eslintcc` (antes só Python via `radon`).

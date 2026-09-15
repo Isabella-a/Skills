@@ -95,7 +95,7 @@ Ver `SKILL.md § Revisão automática — por FEATURE, não por spec`. Marcador 
 O template padrão traz **um job** (`code_review`) com duas passadas na mesma sessão: Passada 1
 usa a skill `code-review-skill` (**não** é dependência garantida do plugin — troque para
 `mattpocock-skills:code-review` se não estiver instalada), Passada 2 usa `ponytail:ponytail-review`
-(essa sim, dependência do plugin `claude-skills`).
+(essa sim, dependência do plugin `isabella`).
 
 O que olhar antes de continuar:
 
