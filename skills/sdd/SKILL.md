@@ -56,7 +56,7 @@ antes de executar a fase. Os caminhos são relativos a este diretório de skill.
 | `regras/qualidade.md` | Regras e anti-padrões — leia antes de escrever qualquer spec |
 | `referencias/spec_template.md` | Template RFC de referência — base estrutural |
 | `referencias/sdd_guide.md` | Guia de metodologia SDD — para dúvida conceitual |
-| skill de grilling (ex.: `grilling`, do plugin `mattpocock-skills`) | Entrevista o usuário em rounds até a ideia estar afiada (Fase 1) |
+| skill de grilling (ex.: `grill-me` ou `grill-with-docs`, de `mattpocock-skills`) | Entrevista o usuário em rounds até a ideia estar afiada (Fase 1) |
 | skill/MCP do rastreador de issues, se houver | Busca o ticket quando `$ARGUMENTS` traz chave ou link (Fase 1) |
 
 ---
@@ -72,10 +72,10 @@ exclusiva do Claude Code. Duas convenções mudam de sintaxe conforme o runtime,
 - **Delegar a um subagente** (`Agent(...)`, usado nas Fases 2-4): no Claude Code, use a tool
   `Agent`/`Task`. No Codex CLI, use `spawn_agent`/`wait_agent`. Sem essa primitiva, faça a
   exploração você mesmo, sequencialmente, em vez de pular a etapa.
-- **Skills externas de outro plugin** (`grilling`, referenciada na Fase 1): é um plugin do
-  Claude Code (`mattpocock-skills`), sem garantia de existir fora dele. Se não existir no seu
-  runtime, conduza a entrevista de grilling você mesmo (várias rodadas de perguntas até a ideia
-  estar afiada) em vez de pular a Fase 1.
+- **Skills externas de outro plugin** (`grill-me`/`grill-with-docs`, referenciada na Fase 1): no
+  Claude Code vêm de `mattpocock-skills`; no Codex, instale-as com `npx skills@latest add
+  mattpocock/skills`. Se não existir uma delas no runtime, conduza a entrevista de grilling você
+  mesmo (várias rodadas de perguntas até a ideia estar afiada) em vez de pular a Fase 1.
 
 ## Regras globais
 

@@ -7,15 +7,23 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 
 ## [Não lançado]
 
-- Adiciona suporte ao [Codex CLI](https://developers.openai.com/codex), que passou a ler skills
-  no mesmo formato aberto `SKILL.md` do Claude Code (`name`/`description`):
-  `scripts/install-codex.sh` instala (copia) as skills em `.agents/skills/`, pasta onde o Codex
-  as descobre; README documenta as duas instalações lado a lado. `sdd`/`spec-harness` ganham uma
-  seção "Runtime" explicando os pontos que mudam de sintaxe por ferramenta (`Skill`/`Agent` do
-  Claude Code vs. leitura direta de `SKILL.md`/`spawn_agent` no Codex) e o que degrada sem os
-  plugins Claude-only (`grilling`, `mattpocock-skills:code-review`, `ponytail:ponytail-review`/
-  `-debt`); `github-assistant` passa a citar `AGENTS.md` a par de `CLAUDE.md`. As demais skills já
-  eram portáveis sem alteração.
+- Adiciona suporte ao [Codex CLI](https://developers.openai.com/codex) no mesmo formato aberto
+  `SKILL.md` do Claude Code (`name`/`description`), inclusive com marketplace versionado em
+  `.agents/plugins/`: qualquer pessoa pode instalar `isabella@isabella-a` diretamente do GitHub,
+  sem clonar este repositório. `scripts/install-codex.sh` continua como alternativa legada para
+  cópia local de skills.
+- Adiciona `scripts/sync-codex-plugin.mjs` e o hook versionado `hooks/pre-commit`: commits que
+  alteram `skills/` sincronizam o bundle do Codex, geram o sufixo de versão
+  `+codex.<timestamp>` e incluem os arquivos derivados no mesmo commit. O README documenta a
+  instalação do hook e o fluxo de atualização por `codex plugin marketplace upgrade`.
+- `sdd`/`spec-harness` passam a documentar os dois runtimes: `Skill`/`Agent` do Claude Code e
+  leitura de `SKILL.md`/`spawn_agent` no Codex. A Fase 1 do SDD reconhece `grill-me` e
+  `grill-with-docs` do conjunto Matt Pocock; no Codex esse conjunto é instalado via `skills.sh`,
+  enquanto Ponytail é instalado como plugin nativo. As integrações continuam opcionais e usam
+  procedimento manual equivalente se estiverem ausentes.
+- `spec-harness`: remove todo gate e execução automática de revisão/CRAP. A revisão é manual na
+  skill `code-review-skill`, que passa a concentrar as calculadoras CRAP para TypeScript/JavaScript
+  e Python.
 
 - Renomeia o plugin de `claude-skills` para `isabella` (`.claude-plugin/plugin.json` e
   `marketplace.json`) — o prefixo de invocação das skills passa a ser `isabella:sdd` etc. Quem já

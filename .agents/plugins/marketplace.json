@@ -1,0 +1,20 @@
+{
+  "name": "isabella-a",
+  "interface": {
+    "displayName": "Isabella A"
+  },
+  "plugins": [
+    {
+      "name": "isabella",
+      "source": {
+        "source": "local",
+        "path": "./plugins/isabella"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

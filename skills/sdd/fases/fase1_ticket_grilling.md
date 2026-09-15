@@ -64,7 +64,8 @@ ausente — não preencha com suposição.
 
 ## 1.3 — Grilling
 
-Chame a skill de grilling disponível (ex.: `grilling`, do plugin `mattpocock-skills`) passando
+Chame a skill de grilling disponível (ex.: `grill-me` ou `grill-with-docs`, de
+`mattpocock-skills`) passando
 como semente:
 
 - título + descrição + critérios de aceite do ticket, se `1.2` trouxe um; **e/ou**
@@ -72,7 +73,7 @@ como semente:
   não está no ticket).
 
 ```
-Skill(skill: "grilling", args: "<resumo do ticket, se houver> + <$ARGUMENTS>")
+Skill(skill: "grill-me", args: "<resumo do ticket, se houver> + <$ARGUMENTS>")
 ```
 
 A skill de grilling conduz a entrevista sozinha — não reimplemente o mecanismo, só dispare e
