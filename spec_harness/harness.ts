@@ -165,6 +165,11 @@ interface RunState {
   capabilities?: RunCapabilities;
   enforcement?: string;
   baseline?: Record<string, string>;
+  // Sessão headless reaproveitada entre as fases e entre as tentativas desta spec. Sobrevive a
+  // `cmdOpenPacket` porque ele copia o run existente ao trocar de fase, e sobrevive ao processo
+  // porque o run é gravado em disco — um `autorun` retomado no dia seguinte continua a mesma
+  // sessão. Ver `runImplementer`.
+  session_id?: string;
 }
 
 interface ValidationResult {
@@ -368,7 +373,7 @@ function crapConfig(): CrapConfig {
 
 // Comando de teste que o scaffold escreve no packet. Fica na config porque é a única parte do
 // scaffolder que é de stack: os gates só precisam do resultado, não do runner.
-const DEFAULT_TEST_COMMAND = 'pytest -q --no-cov -p no:cacheprovider {test_paths} -m "not llm_integration"';
+const DEFAULT_TEST_COMMAND = "pytest -q --no-cov -p no:cacheprovider {test_paths}";
 
 function scaffoldTestCommand(testArgs: string): string {
   const tmpl = CFG().scaffold?.test_command_template ?? DEFAULT_TEST_COMMAND;
@@ -2104,6 +2109,17 @@ function extractSection(text: string, heading: string): string {
   return (end === -1 ? rest : rest.slice(0, end)).join("\n");
 }
 
+// Um token em crase dentro de um bullet é caminho do repositório quando bate com prefixo
+// declarado em `scopes` ou, na falta disso, quando tem a cara de arquivo-fonte deste repo. O
+// critério sai da config, não de uma raiz fixa: exigir `app/` fazia o scaffold encontrar zero
+// arquivo em qualquer repositório com outro layout, e o packet tinha de ser escrito à mão.
+function pareceCaminhoDoRepo(tok: string): boolean {
+  if (!tok.includes("/") || /\s/.test(tok)) return false;
+  const prefixos = [...new Set(scopeNames().flatMap((s) => scopePaths(s)))];
+  if (prefixos.some((p) => tok.startsWith(p))) return true;
+  return sourceExtensions().some((ext) => tok.endsWith(ext));
+}
+
 // A seção 'Arquivos permitidos' é uma sequência de blocos rotulados em negrito
 // (**Produção (fase GREEN)**, **Testes (fase RED)**, **Proibido tocar:** ...). Só as linhas de
 // bullet de cada bloco valem como path — a prosa do bloco 'Proibido tocar' cita paths de outros
@@ -2121,10 +2137,21 @@ function blocosRotulados(section: string): Array<{ label: string; paths: string[
     }
     if (!atual || !/^\s*[-*]\s/.test(line)) continue;
     for (const m of line.matchAll(/`([^`]+)`/g)) {
-      if (m[1].startsWith("app/")) atual.paths.push(m[1]);
+      if (pareceCaminhoDoRepo(m[1])) atual.paths.push(m[1]);
     }
   }
   return blocos.map((b) => ({ label: b.label, paths: [...new Set(b.paths)] }));
+}
+
+// Prefixos declarados por este escopo e por nenhum outro. É o que permite desempatar quando um
+// prefixo compartilhado (um `tests/` comum a vários escopos) faz os paths baterem em mais de um.
+function exclusivePrefixes(scope: string): string[] {
+  const alheios = new Set(
+    scopeNames()
+      .filter((s) => s !== scope)
+      .flatMap((s) => scopePaths(s))
+  );
+  return scopePaths(scope).filter((p) => !alheios.has(p));
 }
 
 function scopeForPaths(paths: string[]): string | null {
@@ -2134,15 +2161,33 @@ function scopeForPaths(paths: string[]): string | null {
       if (paths.some((p) => p.startsWith(prefix))) hits.add(scope);
     }
   }
-  // app/tests/ pertence a dois escopos por construção — desempata pelo escopo exclusivo.
-  const exclusive = [...hits].filter((s) => paths.some((p) => scopePaths(s).some((pre) => pre.startsWith("app/plataformas/") && p.startsWith(pre))));
+  // Um prefixo compartilhado entre escopos (um diretório de testes comum) faz os paths baterem em
+  // vários: desempata pelo escopo que tem prefixo exclusivo casando. A regra é derivada da própria
+  // config, não de uma convenção de diretório — qualquer layout de repositório serve.
+  const exclusive = [...hits].filter((s) =>
+    paths.some((p) => exclusivePrefixes(s).some((pre) => p.startsWith(pre)))
+  );
   if (exclusive.length === 1) return exclusive[0];
   if (hits.size === 1) return [...hits][0];
   return null;
 }
 
+// Caminho de arquivo -> módulo pontilhado, para `missing_module` do gate de RED. O prefixo a
+// descartar é a raiz de import do repositório, que varia (`app/`, `src/`, nenhuma): usa o maior
+// prefixo declarado em `scopes` que não seja ele mesmo um pacote, e por isso sai da config.
 function dottedModule(p: string): string {
-  return p.replace(/^app\//, "").replace(/\.py$/, "").replace(/\//g, ".");
+  const raizes = [...new Set(scopeNames().flatMap((s) => scopePaths(s)))]
+    .map((pre) => pre.split("/")[0])
+    .filter((r) => r && !fs.existsSync(path.join(REPO_ROOT, r, "__init__.py")))
+    .sort((a, b) => b.length - a.length);
+  let rel = p;
+  for (const r of raizes) {
+    if (rel.startsWith(`${r}/`)) {
+      rel = rel.slice(r.length + 1);
+      break;
+    }
+  }
+  return rel.replace(/\.py$/, "").replace(/\//g, ".");
 }
 
 function cmdScaffoldPacket(args: string[]): void {
@@ -2252,6 +2297,9 @@ interface ImplementerConfig {
   allowed_tools?: string;
   max_attempts?: number;
   prompts?: Record<string, string>;
+  lean_context?: boolean;
+  reuse_session?: boolean;
+  system_prompt?: string;
 }
 
 function implementerConfig(): ImplementerConfig {
@@ -2308,6 +2356,22 @@ function blocoDeArquivosDeReferencia(packet: Packet): string {
   );
 }
 
+// Settings mínimo passado com `--settings` quando o contexto enxuto está ligado.
+//
+// `--setting-sources project,local` descarta os settings de nível `user`, e com eles os plugins
+// instalados na máquina — que não servem a uma sessão headless de fase e só custam contexto
+// imprevisível (ex.: um plugin de terminal cujo hook PostToolUse falha em sessão headless, sem
+// /dev/tty, e faz o Claude Code gravar stdout+stderr em contexto a cada tool call). Mas o hook de
+// path scoping do spec-harness também vem do nível descartado, e perdê-lo desligaria o
+// enforcement — por isso ele é reinjetado aqui, por caminho absoluto.
+function leanSettingsJson(): string {
+  return JSON.stringify({
+    hooks: {
+      PreToolUse: [{ matcher: "*", hooks: [{ type: "command", command: HOOK_GUARD, timeout: 15 }] }],
+    },
+  });
+}
+
 // Sessão headless que implementa UMA fase dentro do worktree da spec. O modelo aqui é o barato
 // (sonnet por padrão): o contexto dele é o packet daquela fase, e o hook PreToolUse do harness
 // continua valendo porque o cwd é o worktree com execução ativa.
@@ -2319,24 +2383,47 @@ function runImplementer(
   logPath: string
 ): Promise<number> {
   const cfg = implementerConfig();
-  const template = cfg.prompts?.[phase];
-  if (!template) die(`implementer.prompts.${phase} ausente em ${path.relative(REPO_ROOT, CONFIG_PATH)}`);
 
-  const prompt =
-    interpolate(template, {
-      spec: packet.source_spec ?? "",
-      phase,
-      app: packet.app ?? "",
-      worktree: run.worktree,
-      requirements: (packet.done_when?.requirements ?? []).join(", "),
-      write_paths: (packet.capabilities?.write?.paths ?? []).join("\n  - "),
-      read_paths: (packet.capabilities?.read?.paths ?? []).join("\n  - "),
-      test_command: (packet.validation?.commands ?? [])[0]?.run ?? "",
-      feedback: feedback || "(primeira tentativa — nenhum gate reprovado ainda)",
-    }) +
-    blocoDeArquivosDeReferencia(packet) +
-    blocoDeDocsDaFase(phase) +
-    BLOCO_FALHA_DE_AMBIENTE;
+  // Config anterior a este recurso não tem `prompts.retomada`, e retomar sem ele deixaria a
+  // sessão sem instrução de fase — inclusive sem a fronteira de escrita nova. Nesse caso o
+  // reaproveitamento se desliga sozinho e o comportamento volta ao de antes: um upgrade do motor
+  // não pode quebrar um repositório já configurado, nem afrouxar o enforcement em silêncio.
+  const reuse = cfg.reuse_session !== false && Boolean(cfg.prompts?.retomada);
+  if (cfg.reuse_session !== false && !cfg.prompts?.retomada) {
+    console.log(
+      `  AVISO: implementer.prompts.retomada ausente em ${path.relative(REPO_ROOT, CONFIG_PATH)} — ` +
+        `cada fase abrirá sessão fria. Copie o prompt do template para reaproveitar a sessão.`
+    );
+  }
+
+  // Retomar troca o prompt: a sessão já leu a spec, já sabe onde as coisas ficam e já tem o teste
+  // do RED no contexto — tudo isso a preço de cache read, que a assinatura não cobra. Repetir o
+  // prompt frio aqui desperdiçaria a única coisa que a retomada compra.
+  const retomando = reuse && Boolean(run.session_id);
+  const chave = retomando ? "retomada" : phase;
+  const template = cfg.prompts?.[chave];
+  if (!template) die(`implementer.prompts.${chave} ausente em ${path.relative(REPO_ROOT, CONFIG_PATH)}`);
+
+  const vars = {
+    spec: packet.source_spec ?? "",
+    phase,
+    app: packet.app ?? "",
+    worktree: run.worktree,
+    requirements: (packet.done_when?.requirements ?? []).join(", "),
+    write_paths: (packet.capabilities?.write?.paths ?? []).join("\n  - "),
+    read_paths: (packet.capabilities?.read?.paths ?? []).join("\n  - "),
+    test_command: (packet.validation?.commands ?? [])[0]?.run ?? "",
+    feedback: feedback || "(primeira vez nesta fase — nenhum gate reprovado ainda)",
+  };
+
+  // Numa retomada o modelo já recebeu estes blocos na primeira invocação da sessão; reenviá-los
+  // só acrescentaria contexto novo, que é exatamente o que a retomada existe para evitar.
+  const prompt = retomando
+    ? interpolate(template, vars)
+    : interpolate(template, vars) +
+      blocoDeArquivosDeReferencia(packet) +
+      blocoDeDocsDaFase(phase) +
+      BLOCO_FALHA_DE_AMBIENTE;
 
   const args = [
     "-p",
@@ -2350,6 +2437,22 @@ function runImplementer(
     "--allowedTools",
     cfg.allowed_tools ?? "Read Grep Glob Bash Write Edit",
   ];
+
+  if (reuse) {
+    if (!run.session_id) {
+      run.session_id = crypto.randomUUID();
+      saveRun(run);
+    }
+    args.push(retomando ? "--resume" : "--session-id", run.session_id);
+  }
+
+  // Corte de desperdício puro: nada aqui remove instrução que o modelo use. `system_prompt`
+  // substitui as diretrizes de ferramenta do Claude Code — é trocar qualidade por token, então
+  // fica desligado por padrão mesmo com lean_context ligado.
+  if (cfg.lean_context !== false) {
+    args.push("--strict-mcp-config", "--setting-sources", "project,local", "--settings", leanSettingsJson());
+    if (cfg.system_prompt) args.push("--system-prompt", cfg.system_prompt);
+  }
 
   return new Promise((resolve) => {
     const child = spawn("claude", args, {
@@ -2423,8 +2526,16 @@ async function cmdAutorun(args: string[]): Promise<void> {
       attempt += 1;
       const logPath = path.join(logDir, `${phase}-${attempt}.log`);
       const t0 = Date.now();
+      const retomou = usaImplementador && Boolean(run.session_id);
       const code = usaImplementador ? await runImplementer(phase, packet, run, feedback, logPath) : 0;
       const elapsed = ((Date.now() - t0) / 1000).toFixed(0);
+      if (usaImplementador) {
+        console.log(
+          retomou
+            ? `[${phase}] sessão retomada (${run.session_id}) — spec e orientação já no contexto`
+            : `[${phase}] sessão nova (${run.session_id ?? "sem reaproveitamento"})`
+        );
+      }
       const outcome = await verifyPacket(packetPath, true);
       ok = outcome.ok;
       changed = outcome.changed_files.length;
@@ -2602,7 +2713,9 @@ function diretorioDeTestesRaiz(): string | null {
 // certa é "domínio", não "repo". Sem contêiner reconhecível, devolve um escopo só e registra pendência.
 function detectaScopes(exts: string[], pendencias: string[]): Record<string, { paths: string[] }> {
   const testesRaiz = diretorioDeTestesRaiz();
-  const conteineres = ["app/plataformas", "app/domains", "src/domains", "src/modules", "apps", "packages", "services", "src", "app"];
+  // Candidatos de contêiner de domínios, do mais específico para o mais genérico — a ordem é a
+  // precedência da detecção. A lista é de convenções conhecidas, nenhuma privilegiada.
+  const conteineres = ["src/modules", "src/domains", "app/domains", "app/plataformas", "apps", "packages", "services", "src", "app"];
   for (const cont of conteineres) {
     if (!repoTem(cont)) continue;
     const filhos = subdiretorios(cont).filter((f) => temArquivoComExtensao(`${cont}/${f}`, exts));
@@ -2619,7 +2732,7 @@ function detectaScopes(exts: string[], pendencias: string[]): Record<string, { p
   const raiz = raizDeCodigo(exts);
   const nome = path.basename(REPO_ROOT).replace(/[^a-zA-Z0-9_]/g, "_");
   pendencias.push(
-    "scopes: não achei um contêiner de domínios (app/plataformas, src/modules, packages...) — " +
+    "scopes: não achei um contêiner de domínios (src/modules, src/domains, packages, apps...) — " +
       `gerei um escopo único '${nome}'. Divida em escopos reais se o repo tiver domínios separados: ` +
       "uma spec toca UM escopo, e é isso que impede uma spec de atravessar domínios."
   );
@@ -2635,7 +2748,14 @@ function detectaTestCommand(linguagem: string, pendencias: string[]): string | n
       if (!repoTem(f)) continue;
       const txt = fs.readFileSync(path.join(REPO_ROOT, f), "utf-8");
       if (/addopts[^\n]*--cov/.test(txt)) flags += " --no-cov";
-      if (/markers\s*=/.test(txt) && /llm_integration/.test(txt)) flags += ' -m "not llm_integration"';
+      // Qual marcador deve ficar fora do gate por spec (integração, e2e, lento) é escolha do
+      // repositório, e o nome varia. Adivinhar excluiria teste que deveria rodar; fica pendência.
+      if (/markers\s*=/.test(txt)) {
+        pendencias.push(
+          `scaffold.test_command_template: ${f} declara markers do pytest — se algum deve ficar ` +
+            'fora do gate por spec (integração, e2e, lento), acrescente -m "not <marcador>" ao comando.'
+        );
+      }
       break;
     }
     return `pytest ${flags} {test_paths}`.replace(/\s+/g, " ").replace(" {test_paths}", " {test_paths}");
@@ -3135,9 +3255,18 @@ function diagnostico(): Problema[] {
     }
   }
 
-  const impl = (cfg as { implementer?: { prompts?: Record<string, string> } }).implementer;
+  const impl = (cfg as { implementer?: { prompts?: Record<string, string>; reuse_session?: boolean } })
+    .implementer;
   for (const fase of ["red", "green"]) {
     if (!impl?.prompts?.[fase]) add("ERRO", `implementer.prompts.${fase}`, "ausente — o autorun não teria o que mandar para a sessão da fase.");
+  }
+  if (impl?.reuse_session !== false && !impl?.prompts?.retomada) {
+    add(
+      "AVISO",
+      "implementer.prompts.retomada",
+      "ausente — cada fase abrirá sessão fria, pagando o piso de contexto de novo. " +
+        "Copie o prompt do templates/harness.config.template.json."
+    );
   }
 
   // A allowlist só ajuda se apontar para arquivo que existe: um caminho podre vira instrução para

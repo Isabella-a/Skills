@@ -51,6 +51,30 @@ só os arquivos que aquela fase precisa; o `autorun` injeta essa lista no prompt
 instrução explícita ("leia só isto"), e o resto de `docs/` fica fora do escopo dela. Opcional e
 sem custo quando ausente — preencha só se o repo tiver esse tipo de doc grande.
 
+### Sessão reaproveitada entre fases — o maior corte de custo do autorun
+
+O que a assinatura cobra por sessão é contexto **novo** (`cache_creation_input_tokens` +
+`output_tokens`); reler o prefixo já visto é `cache_read`, que não entra nessa conta. Uma sessão
+fria paga o piso de contexto (spec, orientação no repo, docs) de novo em CADA fase — é aí que a
+maior parte do custo repetido do `autorun` está, não no tamanho de cada turno. Por isso GREEN
+retoma a sessão do RED (`--resume`) em vez de abrir uma sessão nova, e cada nova tentativa retoma
+a anterior; o prompt de uma retomada (`implementer.prompts.retomada`) é curto de propósito, porque
+a sessão já tem tudo isso no contexto. O enforcement não afrouxa: o hook decide pela run **ativa**,
+que o harness troca ao entrar em cada fase — o GREEN continua sem conseguir escrever no teste do
+RED mesmo compartilhando sessão com ele.
+
+`implementer.lean_context` (padrão ligado) soma a isso descartando MCP e plugins de nível `user`
+da sessão da fase — nenhum dos dois serve a um RED/GREEN escopado, e um plugin com hook que falha
+em modo headless (sem `/dev/tty`) pode inflar o contexto de cada tool call sem que ninguém perceba.
+O hook de path scoping do harness é reinjetado por caminho absoluto, então o enforcement continua
+valendo mesmo com o resto do nível `user` fora.
+
+Sem `implementer.prompts.retomada` no perfil, o reaproveitamento se desliga sozinho (AVISO do
+`doctor`) e o comportamento volta a ser sessão fria por fase — um repositório configurado antes
+deste recurso não quebra. Para desligar de propósito: `reuse_session: false` / `lean_context:
+false`. Detalhes e o texto do prompt de retomada em `templates/harness.config.template.json §
+implementer`.
+
 Ambiente: ative o ambiente do repositório (venv/conda, nvm, etc. — ver `CLAUDE.md`/`AGENTS.md`
 dele) antes de qualquer teste ou lint; o harness herda o ambiente da sessão que o invoca.
 
@@ -117,10 +141,14 @@ node $HARNESS autorun .specs/sdd-<feature>/packets/SDD-NN.yaml --no-merge
 node $HARNESS merge-spec .specs/sdd-<feature>/packets/SDD-NN.yaml
 ~~~
 
-`autorun` roda **RED → GREEN → VERIFY numa invocação só**. Cada fase é uma sessão headless
-própria (sonnet) dentro do worktree da spec; o handoff entre elas é o commit da fase anterior na
-branch da spec — determinístico, sem passar por modelo nenhum. Quem orquestra vê uma linha por
-tentativa e o resumo final: não vê o código, nem a saída do pytest, nem os logs das sessões.
+`autorun` roda **RED → GREEN → VERIFY numa invocação só**. RED e GREEN compartilham UMA sessão
+headless (sonnet) dentro do worktree da spec — GREEN retoma a sessão do RED, e cada nova
+tentativa retoma a anterior — em vez de abrir sessão fria por fase (`implementer.reuse_session`,
+ver `templates/harness.config.template.json`; desliga sozinho se o repo não tiver
+`implementer.prompts.retomada`). VERIFY não abre sessão nenhuma: só roda os validadores do
+harness. O que muda entre fases é a fronteira de escrita, imposta pelo hook, não a sessão do
+modelo. Quem orquestra vê uma linha por tentativa e o resumo final: não vê o código, nem a saída
+do pytest, nem os logs das sessões.
 
 Não leia o diff antes do autorun terminar. O ponto do comando é que as três fases custem uma
 única passagem de contexto no orquestrador; abrir os arquivos no meio desfaz exatamente a
