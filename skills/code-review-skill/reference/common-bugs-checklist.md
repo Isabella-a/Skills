@@ -1,6 +1,6 @@
 # Common Bugs Checklist
 
-Quick-reference bug patterns for this monorepo's stack. For detailed examples and full checklists, see the dedicated guides linked below.
+Quick-reference bug patterns applicable to any stack. For detailed examples and full checklists, see the dedicated guides linked below.
 
 ## Universal Issues
 

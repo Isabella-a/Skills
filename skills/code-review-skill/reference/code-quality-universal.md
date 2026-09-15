@@ -1,6 +1,6 @@
 # Universal Code Quality Anti-Patterns
 
-Stack-agnostic quality anti-patterns covering reuse, leaky abstractions, parameter sprawl, nested conditionals, stringly-typed code, TOCTOU, and no-op updates. Applies to any TypeScript file in this monorepo (`apps/backend` and `apps/frontend`).
+Stack-agnostic quality anti-patterns covering reuse, leaky abstractions, parameter sprawl, nested conditionals, stringly-typed code, TOCTOU, and no-op updates. Applies to any file, in any stack — examples below use TypeScript because it reads unambiguously, but the pattern itself is language-agnostic.
 
 ## Table of Contents
 

@@ -1,6 +1,8 @@
 # PR Review Template
 
-Copy and use this template for code reviews in this monorepo. Comments left for humans should be in **português brasileiro** (per `/CLAUDE.md`); this template's structure/labels stay in English to match the rest of this skill.
+Copy and use this template for code reviews. Comments left for humans should be in whatever
+language this repo's PRs actually use (check `CLAUDE.md`/`CONTRIBUTING.md`, or past PR comments);
+this template's structure/labels stay in English to match the rest of this skill.
 
 ---
 
@@ -8,7 +10,7 @@ Copy and use this template for code reviews in this monorepo. Comments left for 
 
 [Brief overview of what was reviewed - 1-2 sentences]
 
-**App(s):** [backend / frontend / both]
+**Workspace(s):** [per PROJECT_MAP.md §2, if a monorepo — else omit]
 **PR Size:** [Small/Medium/Large] (~X lines)
 **Review Time:** [X minutes]
 
@@ -55,28 +57,26 @@ Copy and use this template for code reviews in this monorepo. Comments left for 
 ## Security Considerations
 
 - [ ] No hardcoded secrets
-- [ ] DTO validation present on new endpoints (backend)
-- [ ] Authorization Guards in place
+- [ ] Input validated at the boundary on new endpoints/handlers
+- [ ] Authorization checks in place
 - [ ] No SQL/XSS injection risks
 
-## Architecture Considerations (backend)
+## Architecture Considerations
 
-- [ ] `Either` pattern respected, both branches handled
-- [ ] Multi-repository writes wrapped in `UnitOfWork`
-- [ ] Secondary effects published via pg-boss, not inline
+*(fill in from `PROJECT_MAP.md` §4/§11 — examples below, keep only what applies)*
 
-## Architecture Considerations (frontend)
-
-- [ ] Server/Client component boundary respected
+- [ ] Documented error-handling pattern respected, all branches handled
+- [ ] Multi-step writes wrapped in this repo's transaction/unit-of-work pattern, if it has one
+- [ ] Secondary effects published via this repo's async/job convention, not inline
+- [ ] Server/Client component boundary respected, if this is a React Server Components app
 - [ ] Existing form/table/design-system components reused, not reinvented
-- [ ] TanStack Query v5 conventions followed
 
 ## Test Coverage
 
-- [ ] Unit tests added/updated (`*.spec.ts`)
-- [ ] E2E tests added for critical flows (`*.e2e-spec.ts` / Playwright)
+- [ ] Unit tests added/updated, per `PROJECT_MAP.md` §6 convention
+- [ ] E2E tests added for critical flows, if this repo has that layer
 - [ ] Edge cases covered
-- [ ] Error cases tested (including `Either.Err` branches)
+- [ ] Error cases tested (including the "failure" branch of this repo's error-handling pattern)
 
 ## Verdict
 

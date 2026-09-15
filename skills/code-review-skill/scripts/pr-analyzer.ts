@@ -2,8 +2,8 @@
 /**
  * PR Analyzer - Analyze PR complexity and suggest a review approach.
  *
- * Scoped to the One Portal monorepo (NestJS backend + Next.js/React frontend,
- * TypeScript throughout).
+ * Stack-agnostic: parses a unified diff and flags size/complexity/risk factors
+ * from file paths and languages alone, with no assumption about framework.
  *
  * Usage:
  *   npx tsx pr-analyzer.ts [--diff-file FILE] [--stats]
@@ -89,7 +89,7 @@ function isConfigFile(filename: string): boolean {
 }
 
 export function isMigrationFile(filename: string): boolean {
-  return filename.includes('infra/database/migrations') || filename.includes('infra/database/sqlite-migrations');
+  return filename.split('/').some((segment) => /^[\w-]*migrations?$/i.test(segment));
 }
 
 export function parseDiff(diffContent: string): FileStats[] {
@@ -138,12 +138,7 @@ function calculateComplexity(files: FileStats[]): number {
   const testLines = files.filter((f) => f.isTest).reduce((sum, f) => sum + f.additions + f.deletions, 0);
   const nonTestRatio = 1 - testLines / Math.max(totalChanges, 1);
 
-  // Backend + frontend touched in the same PR is riskier.
-  const touchesBackend = files.some((f) => f.filename.includes('apps/backend'));
-  const touchesFrontend = files.some((f) => f.filename.includes('apps/frontend'));
-  const crossAppFactor = touchesBackend && touchesFrontend ? 1 : 0;
-
-  const complexity = sizeFactor * 0.4 + fileFactor * 0.2 + nonTestRatio * 0.2 + crossAppFactor * 0.2;
+  const complexity = sizeFactor * 0.5 + fileFactor * 0.25 + nonTestRatio * 0.25;
   return Math.round(complexity * 100) / 100;
 }
 
@@ -189,19 +184,13 @@ function identifyRiskFactors(files: FileStats[]): string[] {
   const migrationFiles = files.filter((f) => f.isMigration);
   if (migrationFiles.length) {
     risks.push(
-      `Database migration(s) touched (${migrationFiles.length} file(s)) - verify it was generated ` +
-        'per apps/backend/CLAUDE.md, not hand-written, and is registered in test/setup-e2e.ts',
+      `Database migration(s) touched (${migrationFiles.length} file(s)) - verify it follows this ` +
+        "repo's migration convention (see PROJECT_MAP.md §4) and is covered by tests if applicable",
     );
   }
 
   if (files.some((f) => f.language === 'SQL' && !f.isMigration)) {
     risks.push('Raw SQL changes detected outside migrations - review carefully');
-  }
-
-  const touchesBackend = files.some((f) => f.filename.includes('apps/backend'));
-  const touchesFrontend = files.some((f) => f.filename.includes('apps/frontend'));
-  if (touchesBackend && touchesFrontend) {
-    risks.push('PR spans both apps/backend and apps/frontend - CI is scoped by paths, verify both pipelines ran');
   }
 
   const configFiles = files.filter((f) => f.isConfig);
@@ -232,13 +221,7 @@ function generateSuggestions(files: FileStats[], complexity: number, risks: stri
 
   const languages = new Set(files.map((f) => f.language));
   if (languages.has('TypeScript') || languages.has('TypeScript/React')) {
-    suggestions.push('Check for `any` usage and unhandled Either error branches');
-  }
-  if (files.some((f) => f.filename.includes('apps/backend'))) {
-    suggestions.push('Check Either pattern, UnitOfWork usage, and pg-boss event publishing (see reference/nestjs-typescript.md)');
-  }
-  if (files.some((f) => f.filename.includes('apps/frontend'))) {
-    suggestions.push('Check Server/Client component boundary and design-system token usage (see reference/react-nextjs.md)');
+    suggestions.push('Check for `any` usage and unhandled error branches');
   }
   if (files.some((f) => f.isMigration)) {
     suggestions.push('Verify migration was generated via the documented sequence, not hand-written');

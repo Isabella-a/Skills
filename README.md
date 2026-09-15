@@ -130,9 +130,7 @@ linguagem natural — o Claude reconhece o pedido e ativa a skill certa sozinho.
 
 ## Skills disponíveis
 
-A maioria das skills abaixo é genérica, no espírito descrito acima. Uma exceção —
-`code-review-skill` — foi trazida de um monorepo específico (stack de código daquele projeto) e
-está marcada como tal na tabela; use-a como referência, não como padrão a copiar para outro repo.
+Todas as skills abaixo são genéricas, no espírito descrito acima.
 
 **Comece por `project-map`.** As outras skills deste plugin dão conselho genérico até
 saberem em que repositório estão — `project-map` é o que muda isso. Rode uma vez por repositório
@@ -150,7 +148,7 @@ repositório em vez de inventar um.
 | [`sdd-jira-sync`](skills/sdd-jira-sync) | Sincroniza as specs de uma feature `sdd` (`.specs/sdd-<feature>/specs/*.md`) como Subtarefas de uma história já existente no Jira — reaproveita subtarefas que já batem com o escopo e cria as que faltarem. | Peça "sobe as specs do sdd-<feature> pro Jira, vinculadas na história <CHAVE>" ou "sincroniza as specs com a <CHAVE>". Depende da skill `jira-assistant` para configuração. |
 | [`github-assistant`](skills/github-assistant) | Gerencia GitHub via `gh` CLI — Pull Requests, Issues, branches e commits. Detecta automaticamente o owner/repo do workspace (`github-config.md` ou git remote). | Peça para abrir/revisar/mergear um PR, criar uma issue, listar PRs abertos, ver checks de CI ou comparar branches. |
 | [`jira-assistant`](skills/jira-assistant) | Gerencia issues do Jira via Atlassian MCP — busca, cria, atualiza, transiciona status, comentários e KTLOs. Detecta a configuração do workspace automaticamente (`jira-config.md`). | Peça para criar/buscar/atualizar uma issue, mover para outro status, comentar ou "cadastrar um KTLO". |
-| [`code-review-skill`](skills/code-review-skill) ⚠️ | Revisão de código com o checklist e as convenções do stack do One Portal (NestJS 11 com Either/Unit of Work/pg-boss, React 19 + Next.js 16, TanStack Query v5). | Ativa ao revisar PRs/mudanças nesse stack. **Específica do One Portal** — para revisão genérica use a `code-review` do plugin `mattpocock-skills`. |
+| [`code-review-skill`](skills/code-review-skill) | Revisão de código genérica, ancorada no `PROJECT_MAP.md` deste repo (gera na hora, com permissão, se faltar). Roda em sub-agentes paralelos — Architecture, Correctness & Security, Performance, Quality & Reuse (inclui CRAP, limiar 20) e Spec conformance (quando há issue/spec de origem) — cada eixo relatado à parte, nunca mesclado. | Ativa ao revisar PRs/mudanças de código, em qualquer stack. |
 
 ### `project-map` em detalhe
 

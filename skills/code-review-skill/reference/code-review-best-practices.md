@@ -1,6 +1,6 @@
 # Code Review Best Practices
 
-Comprehensive guidelines for conducting effective code reviews on this monorepo.
+Comprehensive guidelines for conducting effective code reviews in any repository.
 
 ## Review Philosophy
 
@@ -10,7 +10,7 @@ Comprehensive guidelines for conducting effective code reviews on this monorepo.
 - Catch bugs and edge cases before production
 - Ensure code maintainability and readability
 - Share knowledge across the team
-- Enforce this repo's standards consistently (see app-level `CLAUDE.md` files)
+- Enforce this repo's standards consistently (see `PROJECT_MAP.md` and any `CLAUDE.md` files)
 - Improve design and architecture decisions
 
 **Secondary Goals:**
@@ -44,9 +44,9 @@ Comprehensive guidelines for conducting effective code reviews on this monorepo.
 ## Review Depth Levels
 
 ### Level 1: Skim Review (5 minutes)
-- Check PR description and linked Jira issue
+- Check PR description and linked issue (tracker per `PROJECT_MAP.md` §13)
 - Verify CI status (lint, type-check, tests)
-- Look at the file changes overview — does it touch `apps/backend`, `apps/frontend`, or both?
+- Look at the file changes overview — in a monorepo, which workspace(s) per `PROJECT_MAP.md` §2 does it touch?
 - Identify if deeper review is needed
 
 ### Level 2: Standard Review (20-30 minutes)
@@ -65,7 +65,7 @@ Comprehensive guidelines for conducting effective code reviews on this monorepo.
 
 ### Tone and Language
 
-Comments for humans on this repo's PRs should be written in **português brasileiro**, per `/CLAUDE.md`.
+Comments for humans on this repo's PRs should be written in whatever language this repo actually uses — check `CLAUDE.md`/`CONTRIBUTING.md`, or the predominant language of past PR comments/commits.
 
 **Use collaborative language:**
 - "O que acha de..." instead of "Você deveria..."
@@ -74,7 +74,7 @@ Comments for humans on this repo's PRs should be written in **português brasile
 
 **Be specific and actionable:**
 - Include code examples when suggesting changes
-- Link to relevant sections of `apps/backend/CLAUDE.md` / `apps/frontend/CLAUDE.md` or past discussions
+- Link to relevant sections of `PROJECT_MAP.md`, this repo's `CLAUDE.md` files, or past discussions
 - Explain the "why" behind suggestions
 
 ### Handling Disagreements

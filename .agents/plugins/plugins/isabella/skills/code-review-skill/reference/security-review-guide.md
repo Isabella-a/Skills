@@ -1,6 +1,6 @@
 # Security Review Guide
 
-Security-focused code review checklist based on OWASP Top 10, adapted to this monorepo's stack (NestJS backend, Next.js/React frontend).
+Security-focused code review checklist based on OWASP Top 10, applicable to any stack. Cross-check against `PROJECT_MAP.md` §9 for this repo's actual secret/auth conventions.
 
 ## Authentication & Authorization
 
@@ -107,17 +107,17 @@ if (!filePath.startsWith(uploadsDir + path.sep)) {
 }
 ```
 
-## DTO Validation (Backend)
+## Input Validation at the Boundary
 
-Every controller input should be validated at the boundary via a DTO with `class-validator` decorators — never `@Body() body: any`. See [NestJS Guide](nestjs-typescript.md#dto-validation) for this repo's conventions.
+Every request handler's input should be validated at the boundary via a schema/DTO — never an untyped/`any` body passed straight to business logic. If this repo is NestJS, see [NestJS Guide](nestjs-typescript.md#dto-validation) for its specific `class-validator` convention.
 
 ## Data Protection
 
 ### Sensitive Data Handling
 - [ ] No secrets in source code
-- [ ] Secrets in environment variables / Secrets Manager (this repo uses AWS Secrets Manager for some providers — see `apps/backend/CLAUDE.md`)
+- [ ] Secrets in environment variables / a secrets manager, per `PROJECT_MAP.md` §9's documented convention
 - [ ] Sensitive data encrypted at rest and in transit (HTTPS)
-- [ ] PII (client documents, CPF/CNPJ, financial data) handled according to applicable regulations
+- [ ] PII (personal documents, financial data, etc.) handled according to applicable regulations
 - [ ] Sensitive data not logged
 - [ ] Secure data deletion when required (this repo uses soft-delete + audit for managed clients — verify a hard-delete request doesn't bypass that pattern without reason)
 

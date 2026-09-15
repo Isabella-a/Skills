@@ -11,7 +11,7 @@
       "name": "isabella",
       "source": "./",
       "description": "project-map mapeia o repositório para dar contexto real às demais: referências de arquitetura (NestJS, monorepos), boas práticas React/Next.js e o fluxo sdd + spec-harness (specs testáveis com TDD e enforcement de path).",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "category": "engineering",
       "keywords": [
         "skills",
