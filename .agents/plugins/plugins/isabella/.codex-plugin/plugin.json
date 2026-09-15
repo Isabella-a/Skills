@@ -1,0 +1,30 @@
+{
+  "name": "isabella",
+  "version": "1.1.0+codex.20260915181958",
+  "description": "Skills de engenharia, SDD e spec harness para Codex.",
+  "author": {
+    "name": "Isabella Antunes",
+    "url": "https://github.com/Isabella-a"
+  },
+  "homepage": "https://github.com/Isabella-a/Skills",
+  "repository": "https://github.com/Isabella-a/Skills",
+  "keywords": [
+    "skills",
+    "sdd",
+    "spec-harness",
+    "engineering"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Isabella Skills",
+    "shortDescription": "Skills de engenharia e Spec-Driven Development.",
+    "longDescription": "Coleção de skills para mapear repositórios, especificar entregas e implementar specs com o spec harness.",
+    "developerName": "Isabella Antunes",
+    "category": "Productivity",
+    "capabilities": [
+      "Skills"
+    ],
+    "websiteURL": "https://github.com/Isabella-a/Skills",
+    "defaultPrompt": "Use a skill Isabella para planejar ou implementar esta entrega."
+  }
+}

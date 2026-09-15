@@ -20,7 +20,86 @@ daquele repositório, não aqui.
 
 ## Instalação
 
-### Claude Code
+<details>
+<summary><strong>Codex</strong></summary>
+
+### Plugin
+
+O marketplace versionado permite instalar as skills como plugin no Codex, em qualquer computador,
+sem clonar o repositório e sem afetar a instalação do Claude Code:
+
+```powershell
+codex plugin marketplace add Isabella-a/Skills --ref main --sparse .agents/plugins
+codex plugin add isabella@isabella-a
+```
+
+Para desenvolvimento local, use `codex plugin marketplace add .\.agents\plugins`. Após alterar
+uma skill, rode `powershell -ExecutionPolicy Bypass -File scripts\sync-codex-plugin.ps1`, versione
+e publique as mudanças antes de qualquer outra pessoa instalar a versão atualizada.
+
+#### Atualização do plugin
+
+Quem mantém o plugin deve fazer commit e publicar em `main`. Com o hook de automação instalado,
+o bundle e a versão são atualizados no próprio commit; sem o hook, rode
+`powershell -ExecutionPolicy Bypass -File scripts\sync-codex-plugin.ps1` e atualize a versão do
+manifesto manualmente antes de publicar.
+
+Quem já instalou o plugin atualiza o marketplace remoto e reinstala o bundle:
+
+```powershell
+codex plugin marketplace upgrade isabella-a
+codex plugin add isabella@isabella-a
+```
+
+Abra uma nova conversa do Codex depois da reinstalação para carregar as skills atualizadas.
+
+#### Automação no commit
+
+Instale uma vez o hook versionado deste repositório:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install-git-hooks.ps1
+```
+
+Em commits que alterem `skills/`, o hook sincroniza automaticamente o bundle Codex, acrescenta
+`+codex.<timestamp>` à versão do plugin e inclui os arquivos gerados no mesmo commit. Para manter
+o bundle determinístico, todas as alterações em `skills/` devem estar staged antes do commit.
+
+### Integrações opcionais
+
+O manifesto do Codex não oferece um campo `dependencies` para instalar plugins de outros
+marketplaces em cascata. Por isso, o bundle `isabella` inclui todas as skills deste repositório que
+são compatíveis com Codex. As integrações externas devem ser instaladas uma vez, pelo mecanismo
+que cada projeto oferece:
+
+```powershell
+# Ponytail: plugin nativo do Codex
+codex plugin marketplace add DietrichGebert/ponytail
+codex plugin add ponytail@ponytail
+
+# Matt Pocock: skills compatíveis com Codex, instaladas no projeto pelo skills.sh
+npx skills@latest add mattpocock/skills
+```
+
+No instalador de Matt Pocock, selecione `grill-me` (ou `grill-with-docs`) para a entrevista da
+Fase 1 do `sdd`, e `code-review` se quiser a revisão complementar. Ponytail disponibiliza
+`ponytail-review` e `ponytail-debt` como skills do Codex. Essas integrações continuam opcionais:
+se não estiverem presentes, as skills Isabella aplicam o procedimento manual equivalente.
+
+Para desenvolvimento sem marketplace, o instalador legado ainda pode copiar as skills para
+`~/.agents/skills` (global) ou `.agents/skills` (local):
+
+```bash
+./scripts/install-codex.sh
+./scripts/install-codex.sh --local
+```
+
+</details>
+
+<details>
+<summary><strong>Claude Code</strong></summary>
+
+### Plugin
 
 Dentro do Claude Code, em qualquer repositório:
 
@@ -32,10 +111,10 @@ Dentro do Claude Code, em qualquer repositório:
 ```
 
 Não é preciso `git clone` nem rodar nenhum script — o Claude Code busca e mantém o plugin
-atualizado sozinho. As duas primeiras marketplaces são de dependências do `spec-harness`
-(`mattpocock-skills` e `ponytail` — ver detalhe abaixo); sem elas adicionadas antes, o `/plugin
-install` ainda funciona, mas o plugin fica com status "failed to load" até você rodar os dois
-primeiros comandos.
+atualizado sozinho. O manifesto `.claude-plugin/plugin.json` declara nativamente as duas
+dependências: `mattpocock-skills@claude-plugins-official` e `ponytail@ponytail`. As duas primeiras
+marketplaces precisam existir antes do `/plugin install`; sem elas, o plugin fica com status
+"failed to load" até que sejam adicionadas.
 
 #### Verificando a instalação
 
@@ -47,31 +126,7 @@ Abra a lista de plugins instalados e confirme `isabella`. Ou digite `/` em qualq
 repositório para ver as skills na lista de comandos, ou simplesmente descreva a tarefa em
 linguagem natural — o Claude reconhece o pedido e ativa a skill certa sozinho.
 
-### Codex CLI
-
-O Codex não tem marketplace/plugin — ele descobre skills lendo `SKILL.md` em
-`~/.agents/skills/<nome>/` (global, todo repositório) ou `.agents/skills/<nome>/` (só o
-repositório atual). Clone este repositório em qualquer pasta e rode o script de instalação, que
-copia cada skill para lá (cópia, não symlink — portátil em qualquer SO, inclusive Windows):
-
-```bash
-git clone https://github.com/Isabella-a/Skills.git
-cd Skills
-./scripts/install-codex.sh            # global: ~/.agents/skills — todo repositório
-./scripts/install-codex.sh --local    # só o repositório atual: ./.agents/skills
-```
-
-Sem versionamento automático: depois de um `git pull` no clone, rode o script de novo para
-propagar a atualização. Descreva a tarefa em linguagem natural para o Codex ativar a skill certa
-sozinho (description-matching, igual ao Claude Code), ou invoque explicitamente com `/skills`,
-`$<nome>` ou `@<nome>` conforme a versão do Codex.
-
-**Diferença de cobertura:** `sdd` e `spec-harness` dependem, em algumas fases opcionais, de
-outros plugins do Claude Code (`grilling` para entrevistar o usuário na Fase 1 do `sdd`;
-`mattpocock-skills:code-review` e `ponytail:ponytail-review`/`ponytail-debt` na revisão manual
-pós-VERIFY do `spec-harness`) — esses plugins não existem fora do Claude Code. Rodando por Codex,
-essas etapas caem para modo manual (a própria skill instrui o quê fazer no lugar) em vez de travar.
-As demais skills deste repositório são autocontidas e portam sem perda.
+</details>
 
 ## Skills disponíveis
 
@@ -126,8 +181,8 @@ Este plugin declara duas dependências reais (`.claude-plugin/plugin.json`), ins
 `isabella` desde que as marketplaces delas já tenham sido adicionadas (ver Instalação
 acima):
 
-- **`mattpocock-skills`** — fornece `grilling` (entrevista o usuário antes de gerar a spec, usada
-  pela Fase 1 da `sdd`) e `code-review` (revisão manual após VERIFY).
+- **`mattpocock-skills`** — fornece `grill-me`/`grill-with-docs` (entrevista o usuário antes de
+  gerar a spec, usada pela Fase 1 da `sdd`) e `code-review` (revisão manual após VERIFY).
 - **`ponytail`** — fornece `ponytail-review` (job automático `ponytail_review`, revisão focada em
   over-engineering) e `ponytail-debt` (consolidar em ledger os comentários `ponytail:` deixados
   como atalho deliberado, sugerida ao final de uma feature).
@@ -135,29 +190,71 @@ acima):
 Além dessas, uma opcional e não gerenciada por este plugin: skill/MCP de rastreador de issues
 (Jira, GitHub Issues etc.), para a `sdd` resolver um ticket por chave ou link.
 
+No Codex, Ponytail é instalado como plugin separado (`ponytail@ponytail`) e Matt Pocock é
+instalado como conjunto de skills com `npx skills@latest add mattpocock/skills`; os comandos estão
+na seção **Codex CLI**. O manifesto Codex não suporta declarar essas instalações automaticamente.
+
 ## Atualizando
 
 **Claude Code:**
 
 ```
+/plugin marketplace update claude-plugins-official
 /plugin marketplace update isabella-a
 /plugin update isabella@isabella-a
 ```
 
-**Codex CLI:** `git pull` no clone deste repositório, depois rode `./scripts/install-codex.sh`
-(ou `--local`) de novo — sem isso as skills instaladas em `.agents/skills/` ficam na versão
-copiada na última vez.
+Atualize Ponytail e Matt Pocock separadamente com:
+```
+/plugin marketplace update claude-plugins-official
+/plugin marketplace update ponytail
+/plugin update ponytail@ponytail
+/plugin update mattpocock-skills@claude-plugins-official
+/reload-plugins
+```
 
-Nenhuma das duas ferramentas avisa sozinha quando sai uma versão nova. Antes de atualizar,
-especialmente se a versão mudou de major, veja o [`CHANGELOG.md`](CHANGELOG.md).
+As duas dependências são atualizadas separadamente porque são plugins instalados em marketplaces
+distintos. `claude-plugins-official` normalmente tem atualização automática ativada; marketplaces
+de terceiros podem não ter, então os comandos acima tornam a atualização explícita e reproduzível.
+
+#### Automatizar atualização no Claude Code
+
+Não há um comando atômico que atualize `isabella` e todas as dependências em cascata. Para
+automatizar, abra `/plugin`, entre em **Marketplaces** e ative **Enable auto-update** para
+`isabella-a` e `ponytail` (o `claude-plugins-official` já costuma vir habilitado). O Claude Code
+atualiza os marketplaces e seus plugins instalados ao iniciar; quando houver atualização, execute
+`/reload-plugins` na sessão atual ou abra uma nova. As dependências declaradas sem versão, como
+as deste plugin, acompanham a versão mais recente disponível em seus marketplaces.
+
+**Codex CLI:**
+Atualize o marketplace e reinstale o bundle:
+
+```powershell
+codex plugin marketplace upgrade isabella-a
+codex plugin add isabella@isabella-a
+```
+
+Atualize Ponytail separadamente com:
+```powershell
+codex plugin marketplace upgrade ponytail
+codex plugin add ponytail@ponytail
+```
+
+Para as skills Matt Pocock instaladas por `skills.sh`, use
+`npx skills update`.
+
+Nenhuma das duas ferramentas avisa sozinha quando sai uma versão nova. 
+Antes de atualizar, especialmente se a versão mudou de major, veja o:
+#### [`CHANGELOG.md`](CHANGELOG.md)
+
 
 ## Estrutura do repositório
 
 ```text
 .claude-plugin/    # marketplace.json e plugin.json — manifesto do plugin do Claude Code
-skills/            # uma pasta por skill, com SKILL.md na raiz de cada uma (fonte única, lida
-                    # direto pelo plugin do Claude Code; copiada pro Codex por scripts/install-codex.sh)
-scripts/           # install-codex.sh — instala as skills em .agents/skills/ pro Codex CLI
+.agents/plugins/   # marketplace e bundle versionado do plugin do Codex
+skills/            # fonte única das skills; sincronizada para o bundle Codex no commit
+scripts/           # sincronização do bundle e instalador legado de skills para Codex
 spec_harness/      # motor do spec-harness (harness.ts) — não é uma skill, roda em qualquer runtime
 hooks/             # hook de enforcement de path usado pelo spec-harness (plugin do Claude Code)
 CHANGELOG.md        # histórico de versões do plugin

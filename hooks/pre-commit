@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+set -eu
+
+if git diff --cached --quiet -- skills; then
+  exit 0
+fi
+
+if ! git diff --quiet -- skills; then
+  echo "Stage or stash all changes under skills/ before committing."
+  exit 1
+fi
+
+node scripts/sync-codex-plugin.mjs --cachebuster
+git add .agents/plugins/plugins/isabella
