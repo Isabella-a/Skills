@@ -1,6 +1,6 @@
 # Architecture Review Guide
 
-Guidance for evaluating whether a change's architecture and design are sound, applicable to both `apps/backend` (NestJS) and `apps/frontend` (Next.js).
+Guidance for evaluating whether a change's architecture and design are sound, applicable to any stack. Check the documented architecture in `PROJECT_MAP.md` §4 first — it overrides the generic SOLID/coupling read below wherever the two disagree.
 
 ## SOLID Checklist
 

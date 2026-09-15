@@ -19,7 +19,7 @@ from radon.visitors import Function
 
 DEFAULT_EXCLUDE_PATTERNS = ("**/tests/**", "**/evals/**")
 DEFAULT_COVERAGE_JSON = "coverage.json"
-DEFAULT_HIGH_RISK_THRESHOLD = 30.0
+DEFAULT_HIGH_RISK_THRESHOLD = 20.0
 
 
 class CoverageInputError(ValueError):

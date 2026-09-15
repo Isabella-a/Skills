@@ -7,6 +7,29 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 
 ## [Não lançado]
 
+## [2.0.1] - 2026-09-15
+
+- `code-review-skill`: deixa de ser específica do stack do One Portal e passa a se ancorar no
+  `PROJECT_MAP.md` do repositório onde roda — se ele não existir, avisa o usuário e pede permissão
+  antes de gerá-lo via skill `project-map`. Guias de stack (NestJS, React) agora carregam
+  condicionalmente, só quando o `PROJECT_MAP.md` indica aquela stack.
+- `code-review-skill`: a revisão passa a rodar em **sub-agentes paralelos**, um por eixo
+  (Architecture, Correctness & Security, Performance, Quality & Reuse, e Spec conformance quando
+  há issue/spec de origem), cada um recebendo o diff + guia de referência colado inline +
+  trecho do `PROJECT_MAP.md`. Os relatórios de cada eixo são apresentados à parte, nunca
+  mesclados/reranqueados entre si — mesmo princípio do eixo Standards/Spec da skill `code-review`
+  do plugin `mattpocock-skills`.
+- `code-review-skill`: o cálculo de CRAP deixa de ser um passo opcional à parte e passa a ser
+  responsabilidade obrigatória do eixo Quality & Reuse (que já tem `Bash`). Limiar cai de 30 para
+  **20** (default nos dois calculadores, TS/JS e Python); toda função acima do limiar vira um
+  finding obrigatório com o trecho de código já citado, não só o nome da função.
+- `code-review-skill`: o eixo Spec conformance passa a exigir cobertura completa dos requisitos da
+  spec (nada pode ficar de fora — isso bloqueia); implementação além do pedido continua sinalizada,
+  mas só como aviso informativo de "fora do escopo", não como defeito.
+- `code-review-skill`: `scripts/pr-analyzer.ts` perde os hardcodes de path do One Portal
+  (`apps/backend`/`apps/frontend`) e a detecção de migration vira um padrão de nome de segmento de
+  path (`*migrations?`) em vez de string fixa.
+
 ## [2.0.0] - 2026-09-15
 
 - Adiciona suporte ao [Codex CLI](https://developers.openai.com/codex) no mesmo formato aberto

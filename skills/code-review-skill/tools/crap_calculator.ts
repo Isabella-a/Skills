@@ -21,7 +21,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 
 const DEFAULT_COVERAGE_JSON = "coverage/coverage-final.json";
-const DEFAULT_HIGH_RISK_THRESHOLD = 30;
+const DEFAULT_HIGH_RISK_THRESHOLD = 20;
 const EXCLUDE_SEGMENTS = new Set(["tests", "test", "__tests__", "evals", "node_modules"]);
 const TEST_FILE_PATTERN = /\.(test|spec)\.[jt]sx?$/;
 const TS_EXTENSIONS = new Set([".ts", ".tsx"]);
