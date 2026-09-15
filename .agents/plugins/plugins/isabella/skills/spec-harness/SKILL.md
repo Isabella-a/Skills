@@ -235,11 +235,22 @@ O spec-harness executa somente os gates mecânicos. Depois de concluir e antes d
 
 ## Ponytail-debt ao final da feature
 
-Quando todas as specs da feature já estiverem mergeadas, rode a skill `ponytail:ponytail-debt`
-sobre o repositório para consolidar num único ledger os comentários `ponytail:` deixados como
-atalho deliberado durante alguma fase GREEN — em vez de deixá-los se perder na branch. Peça para
-persistir o resultado em `.specs/sdd-<feature>/feedback.md` e revise cada item antes de considerar
-a feature encerrada.
+Só se aplica se o repositório usa o plugin `ponytail` **e** o habilitou em escopo `project`/`local`
+(`.claude/settings.json` do repo) ou desligou `implementer.lean_context`. Por padrão
+`lean_context: true` sobe o implementador do RED/GREEN com `--setting-sources project,local` e
+`--settings` reduzido ao hook do próprio harness (ver "Sessão reaproveitada entre fases" acima) —
+isso exclui qualquer plugin instalado em escopo `user`, que é onde o ponytail normalmente vive. Sem
+um dos dois ajustes, a sessão de implementação nunca carrega o ponytail, então ela não vai deixar
+comentários `ponytail:` para colher — rodar `ponytail:ponytail-debt` nesse caso só vai devolver o
+que já existia no repo antes desta feature (ou nada).
+
+Quando a pré-condição acima estiver satisfeita e todas as specs da feature já estiverem mergeadas,
+rode a skill `ponytail:ponytail-debt` para consolidar num ledger os comentários `ponytail:`
+deixados como atalho deliberado durante alguma fase GREEN — em vez de deixá-los se perder na
+branch. Ela varre o repositório inteiro, não só o diff da feature, então confira se cada linha do
+ledger realmente veio de uma spec desta feature (`git diff main...spec/<feature>/<NN>` de cada uma,
+ou `git log` no arquivo) antes de tratá-la como pendência nova. Peça para persistir o resultado em
+`.specs/sdd-<feature>/feedback.md` e revise cada item antes de considerar a feature encerrada.
 
 ## Revisão semântica e merge
 
