@@ -44,30 +44,26 @@ linguagem natural — o Claude reconhece o pedido e ativa a skill certa sozinho.
 
 ## Skills disponíveis
 
-A maioria das skills abaixo é genérica, no espírito descrito acima. Duas exceções —
-`aws-debugger` e `code-review-skill` — foram trazidas de um monorepo específico (infraestrutura
-AWS e stack de código daquele projeto) e estão marcadas como tal na tabela; use-as como
-referência, não como padrão a copiar para outro repo.
+A maioria das skills abaixo é genérica, no espírito descrito acima. Uma exceção —
+`code-review-skill` — foi trazida de um monorepo específico (stack de código daquele projeto) e
+está marcada como tal na tabela; use-a como referência, não como padrão a copiar para outro repo.
 
-**Comece por `project-map`.** As outras quatro skills deste plugin dão conselho genérico até
+**Comece por `project-map`.** As outras skills deste plugin dão conselho genérico até
 saberem em que repositório estão — `project-map` é o que muda isso. Rode uma vez por repositório
 (as outras skills verificam sozinhas se falta e perguntam antes de gerar) e o resultado
 (`PROJECT_MAP.md`) é o que faz `react-best-practices` sugerir a lib de estado que o projeto já
-usa em vez de uma genérica, `nestjs-modular-monolith` respeitar o ORM já escolhido, e `sdd`/
-`spec-harness` gerarem specs e código no padrão real do repositório em vez de inventar um.
+usa em vez de uma genérica, e `sdd`/`spec-harness` gerarem specs e código no padrão real do
+repositório em vez de inventar um.
 
 | Skill | O que faz | Como acionar |
 |---|---|---|
 | [`project-map`](skills/project-map) | Mapeia o repositório (linguagens, bibliotecas, arquitetura, estilos/CSS global, testes, CI/deploy, segurança, observabilidade) e gera `PROJECT_MAP.md` na raiz — a base de contexto que as demais skills leem antes de agir. | Peça "mapeia esse projeto" ou "gera o PROJECT_MAP.md". As outras skills também oferecem rodá-la sozinhas quando notam que falta. |
-| [`nestjs-modular-monolith`](skills/nestjs-modular-monolith) | Referência para desenhar módulos NestJS como monolito modular (DDD, Clean Architecture, CQRS). | Ativa ao mencionar "modular monolith", "bounded contexts", "CQRS" ou ao desenhar módulos de domínio em NestJS. |
 | [`react-best-practices`](skills/react-best-practices) | Boas práticas de performance para React/Next.js (Vercel Engineering) — data fetching, bundle, renderização. | Ativa ao escrever, revisar ou refatorar componentes React/Next.js. |
-| [`monorepo-management`](skills/monorepo-management) | Referência geral de gestão de monorepos com Turborepo, Nx e pnpm workspaces. | Ativa ao configurar um monorepo, otimizar builds ou gerenciar dependências compartilhadas. |
 | [`sdd`](skills/sdd) | Quebra uma entrega em specs construíveis — documentos de Spec-Driven Design, um por unidade testável, antes de qualquer código. | `/sdd <descrição da feature>`, `/sdd ABC-1234` (busca o ticket antes) ou peça "escreve um spec para X". |
 | [`spec-harness`](skills/spec-harness) | Implementa cada spec gerada pela `sdd` em RED→GREEN→VERIFY, num git worktree isolado, com enforcement de path e revisão automática. | Automática, depois que a pasta `.specs/sdd-<feature>/` já existir. |
 | [`sdd-jira-sync`](skills/sdd-jira-sync) | Sincroniza as specs de uma feature `sdd` (`.specs/sdd-<feature>/specs/*.md`) como Subtarefas de uma história já existente no Jira — reaproveita subtarefas que já batem com o escopo e cria as que faltarem. | Peça "sobe as specs do sdd-<feature> pro Jira, vinculadas na história <CHAVE>" ou "sincroniza as specs com a <CHAVE>". Depende da skill `jira-assistant` para configuração. |
 | [`github-assistant`](skills/github-assistant) | Gerencia GitHub via `gh` CLI — Pull Requests, Issues, branches e commits. Detecta automaticamente o owner/repo do workspace (`github-config.md` ou git remote). | Peça para abrir/revisar/mergear um PR, criar uma issue, listar PRs abertos, ver checks de CI ou comparar branches. |
 | [`jira-assistant`](skills/jira-assistant) | Gerencia issues do Jira via Atlassian MCP — busca, cria, atualiza, transiciona status, comentários e KTLOs. Detecta a configuração do workspace automaticamente (`jira-config.md`). | Peça para criar/buscar/atualizar uma issue, mover para outro status, comentar ou "cadastrar um KTLO". |
-| [`aws-debugger`](skills/aws-debugger) ⚠️ | Investiga erros/incidentes do One Portal (backend NestJS em ECS, frontend Next.js em Amplify) via CloudWatch Logs, alternando entre as contas AWS de develop e produção via SSO. | Peça para investigar um erro em produção/develop ou ver logs de um request específico. **Específica da infraestrutura do One Portal.** |
 | [`code-review-skill`](skills/code-review-skill) ⚠️ | Revisão de código com o checklist e as convenções do stack do One Portal (NestJS 11 com Either/Unit of Work/pg-boss, React 19 + Next.js 16, TanStack Query v5). | Ativa ao revisar PRs/mudanças nesse stack. **Específica do One Portal** — para revisão genérica use a `code-review` do plugin `mattpocock-skills`. |
 
 ### `project-map` em detalhe
