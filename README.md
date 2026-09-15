@@ -1,21 +1,26 @@
-# Claude Code Skills
+# Skills
 
-Coleção de [Skills](https://docs.claude.com/en/docs/claude-code/skills) genéricas para o
-[Claude Code](https://claude.com/claude-code), empacotadas como um **plugin**: instale uma vez e
-elas ficam disponíveis automaticamente em **qualquer** repositório da sua máquina — sem precisar
-copiar nada projeto a projeto.
+Coleção de [Skills](https://agentskills.io) genéricas no formato aberto `SKILL.md`, para uso no
+[Claude Code](https://claude.com/claude-code) e no [Codex CLI](https://developers.openai.com/codex)
+— as duas ferramentas leem o mesmo formato (frontmatter `name` + `description`), só mudam a forma
+de instalar. Instale uma vez e as skills ficam disponíveis automaticamente em **qualquer**
+repositório da sua máquina — sem precisar copiar nada projeto a projeto.
 
 Cada skill é reaproveitável por design: nenhuma delas assume convenções, nomes ou estrutura de um
 projeto específico. Se você precisa de uma skill amarrada às regras de um repositório em
-particular, ela deve viver no `.claude/skills/` daquele repositório, não aqui.
+particular, ela deve viver no `.claude/skills/` (Claude Code) ou `.agents/skills/` (Codex CLI)
+daquele repositório, não aqui.
 
 ## Pré-requisitos
 
-- [Claude Code](https://claude.com/claude-code) instalado.
+- [Claude Code](https://claude.com/claude-code) e/ou [Codex CLI](https://developers.openai.com/codex) instalado.
 - Para usar as skills `sdd` / `spec-harness`: [Node.js](https://nodejs.org) recente (22.6+), com
-  suporte nativo à execução de arquivos `.ts`.
+  suporte nativo à execução de arquivos `.ts`, e o CLI do runtime escolhido no PATH: `codex`
+  (padrão em instalações Codex) ou `claude` (compatibilidade com Claude Code).
 
 ## Instalação
+
+### Claude Code
 
 Dentro do Claude Code, em qualquer repositório:
 
@@ -32,7 +37,7 @@ atualizado sozinho. As duas primeiras marketplaces são de dependências do `spe
 install` ainda funciona, mas o plugin fica com status "failed to load" até você rodar os dois
 primeiros comandos.
 
-### Verificando a instalação
+#### Verificando a instalação
 
 ```
 /plugin
@@ -41,6 +46,32 @@ primeiros comandos.
 Abra a lista de plugins instalados e confirme `isabella`. Ou digite `/` em qualquer
 repositório para ver as skills na lista de comandos, ou simplesmente descreva a tarefa em
 linguagem natural — o Claude reconhece o pedido e ativa a skill certa sozinho.
+
+### Codex CLI
+
+O Codex não tem marketplace/plugin — ele descobre skills lendo `SKILL.md` em
+`~/.agents/skills/<nome>/` (global, todo repositório) ou `.agents/skills/<nome>/` (só o
+repositório atual). Clone este repositório em qualquer pasta e rode o script de instalação, que
+copia cada skill para lá (cópia, não symlink — portátil em qualquer SO, inclusive Windows):
+
+```bash
+git clone https://github.com/Isabella-a/Skills.git
+cd Skills
+./scripts/install-codex.sh            # global: ~/.agents/skills — todo repositório
+./scripts/install-codex.sh --local    # só o repositório atual: ./.agents/skills
+```
+
+Sem versionamento automático: depois de um `git pull` no clone, rode o script de novo para
+propagar a atualização. Descreva a tarefa em linguagem natural para o Codex ativar a skill certa
+sozinho (description-matching, igual ao Claude Code), ou invoque explicitamente com `/skills`,
+`$<nome>` ou `@<nome>` conforme a versão do Codex.
+
+**Diferença de cobertura:** `sdd` e `spec-harness` dependem, em algumas fases opcionais, de
+outros plugins do Claude Code (`grilling` para entrevistar o usuário na Fase 1 do `sdd`;
+`mattpocock-skills:code-review` e `ponytail:ponytail-review`/`ponytail-debt` na revisão manual
+pós-VERIFY do `spec-harness`) — esses plugins não existem fora do Claude Code. Rodando por Codex,
+essas etapas caem para modo manual (a própria skill instrui o quê fazer no lugar) em vez de travar.
+As demais skills deste repositório são autocontidas e portam sem perda.
 
 ## Skills disponíveis
 
@@ -60,7 +91,7 @@ repositório em vez de inventar um.
 | [`project-map`](skills/project-map) | Mapeia o repositório (linguagens, bibliotecas, arquitetura, estilos/CSS global, testes, CI/deploy, segurança, observabilidade) e gera `PROJECT_MAP.md` na raiz — a base de contexto que as demais skills leem antes de agir. | Peça "mapeia esse projeto" ou "gera o PROJECT_MAP.md". As outras skills também oferecem rodá-la sozinhas quando notam que falta. |
 | [`react-best-practices`](skills/react-best-practices) | Boas práticas de performance para React/Next.js (Vercel Engineering) — data fetching, bundle, renderização. | Ativa ao escrever, revisar ou refatorar componentes React/Next.js. |
 | [`sdd`](skills/sdd) | Quebra uma entrega em specs construíveis — documentos de Spec-Driven Design, um por unidade testável, antes de qualquer código. | `/sdd <descrição da feature>`, `/sdd ABC-1234` (busca o ticket antes) ou peça "escreve um spec para X". |
-| [`spec-harness`](skills/spec-harness) | Implementa cada spec gerada pela `sdd` em RED→GREEN→VERIFY, num git worktree isolado, com enforcement de path e revisão automática. | Automática, depois que a pasta `.specs/sdd-<feature>/` já existir. |
+| [`spec-harness`](skills/spec-harness) | Implementa cada spec gerada pela `sdd` em RED→GREEN→VERIFY, num git worktree isolado, com enforcement de path. | Automática, depois que a pasta `.specs/sdd-<feature>/` já existir. |
 | [`sdd-jira-sync`](skills/sdd-jira-sync) | Sincroniza as specs de uma feature `sdd` (`.specs/sdd-<feature>/specs/*.md`) como Subtarefas de uma história já existente no Jira — reaproveita subtarefas que já batem com o escopo e cria as que faltarem. | Peça "sobe as specs do sdd-<feature> pro Jira, vinculadas na história <CHAVE>" ou "sincroniza as specs com a <CHAVE>". Depende da skill `jira-assistant` para configuração. |
 | [`github-assistant`](skills/github-assistant) | Gerencia GitHub via `gh` CLI — Pull Requests, Issues, branches e commits. Detecta automaticamente o owner/repo do workspace (`github-config.md` ou git remote). | Peça para abrir/revisar/mergear um PR, criar uma issue, listar PRs abertos, ver checks de CI ou comparar branches. |
 | [`jira-assistant`](skills/jira-assistant) | Gerencia issues do Jira via Atlassian MCP — busca, cria, atualiza, transiciona status, comentários e KTLOs. Detecta a configuração do workspace automaticamente (`jira-config.md`). | Peça para criar/buscar/atualizar uma issue, mover para outro status, comentar ou "cadastrar um KTLO". |
@@ -96,7 +127,7 @@ Este plugin declara duas dependências reais (`.claude-plugin/plugin.json`), ins
 acima):
 
 - **`mattpocock-skills`** — fornece `grilling` (entrevista o usuário antes de gerar a spec, usada
-  pela Fase 1 da `sdd`) e `code-review` (job automático `code_review` do `spec-harness` pós-VERIFY).
+  pela Fase 1 da `sdd`) e `code-review` (revisão manual após VERIFY).
 - **`ponytail`** — fornece `ponytail-review` (job automático `ponytail_review`, revisão focada em
   over-engineering) e `ponytail-debt` (consolidar em ledger os comentários `ponytail:` deixados
   como atalho deliberado, sugerida ao final de uma feature).
@@ -106,21 +137,28 @@ Além dessas, uma opcional e não gerenciada por este plugin: skill/MCP de rastr
 
 ## Atualizando
 
+**Claude Code:**
+
 ```
 /plugin marketplace update isabella-a
 /plugin update isabella@isabella-a
 ```
 
-O Claude Code não avisa sozinho quando sai uma versão nova — ele só atualiza quando você roda os
-comandos acima. Antes de atualizar, especialmente se a versão mudou de major, veja o
-[`CHANGELOG.md`](CHANGELOG.md).
+**Codex CLI:** `git pull` no clone deste repositório, depois rode `./scripts/install-codex.sh`
+(ou `--local`) de novo — sem isso as skills instaladas em `.agents/skills/` ficam na versão
+copiada na última vez.
+
+Nenhuma das duas ferramentas avisa sozinha quando sai uma versão nova. Antes de atualizar,
+especialmente se a versão mudou de major, veja o [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Estrutura do repositório
 
 ```text
-.claude-plugin/    # marketplace.json e plugin.json — manifesto do plugin
-skills/            # uma pasta por skill, com SKILL.md na raiz de cada uma
-spec_harness/      # motor do spec-harness (harness.ts) — não é uma skill
-hooks/             # hook de enforcement de path usado pelo spec-harness
+.claude-plugin/    # marketplace.json e plugin.json — manifesto do plugin do Claude Code
+skills/            # uma pasta por skill, com SKILL.md na raiz de cada uma (fonte única, lida
+                    # direto pelo plugin do Claude Code; copiada pro Codex por scripts/install-codex.sh)
+scripts/           # install-codex.sh — instala as skills em .agents/skills/ pro Codex CLI
+spec_harness/      # motor do spec-harness (harness.ts) — não é uma skill, roda em qualquer runtime
+hooks/             # hook de enforcement de path usado pelo spec-harness (plugin do Claude Code)
 CHANGELOG.md        # histórico de versões do plugin
 ```

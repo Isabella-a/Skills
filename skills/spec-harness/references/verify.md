@@ -37,91 +37,6 @@ Cada execução também acrescenta uma linha JSON em
 `${SPEC_HARNESS_METRICS_FILE}` ou `/tmp/spec_harness/metrics.jsonl` com
 arquivos alterados, chamadas bloqueadas e totais de validação.
 
-## CRAP (preparação da revisão, não gate do VERIFY)
-
-CRAP **não roda mais na fase VERIFY**: é preparação da revisão por feature, rodada dentro do
-próprio `review-feature`, antes de abrir a sessão do job de code review. Mede risco nas funções
-de produção que a **feature inteira** alterou (diff `base...branch`, acumulando todas as specs já
-mergeadas), não o diff de uma spec isolada:
-
-1. Descobre quais **escopos** a feature tocou (interseção do diff com `scopes.paths`) e roda
-   CRAP uma vez por escopo tocado — uma feature típica toca um só, mas nada impede mais de um.
-2. Para cada escopo: roda a suíte com relatório de cobertura (`crap.coverage_command`, alvos de
-   `crap.scope_tests` ou derivados de `scopes.paths`) — o denominador é a suíte do escopo, não só
-   os arquivos que a feature tocou, o que infla o CRAP de código já coberto;
-3. chama a ferramenta declarada em `crap.tool` (`--only-from` restrito aos arquivos do escopo):
-   `CRAP = complexidade² × (1 − cobertura)³ + complexidade`. Duas implementações, escolhidas por
-   `crap.runtime`:
-   - **Node** (**padrão**, `tools/crap_calculator.ts`, `runtime: "node"`): exige `eslintcc` (e
-     `@typescript-eslint/parser` para `.ts`/`.tsx`) como devDependency do repo, e um
-     `coverage_command` que gere um relatório Istanbul (`coverage-final.json` — o reporter
-     `json` do jest/vitest, ou `nyc --reporter=json`). Nesse caso, `{coverage_json}` no comando
-     recebe um **diretório** (`--coverage.reportsDirectory`/`--coverageDirectory`/`--report-dir`),
-     não um arquivo — o nome `coverage-final.json` é fixo do reporter Istanbul.
-   - **Python** (`tools/crap_calculator.py`, `runtime: "python"`): exige `radon` e um plugin de
-     cobertura que gere JSON do coverage.py no ambiente do repo; aí `{coverage_json}` volta a ser
-     um arquivo (`--cov-report=json:{coverage_json}`).
-   Ambas produzem o mesmo shape de saída — o resto do harness (`{crap_top}`) não diferencia qual
-   rodou.
-4. Os resultados de todos os escopos tocados são combinados num relatório só.
-
-Artefatos em `.specs/sdd-<feature>/reviews/feature/`: `crap.json` e `crap-arquivos.txt` (os
-relatórios de cobertura brutos, >1 MB cada, ficam em `/tmp/spec_harness/coverage/`). O top-N
-entra no prompt do job de revisão como `{crap_top}`.
-
-O gate é `warn` por padrão: função acima de `crap.threshold` (30) vira aviso e pista de revisão.
-Como isso roda **depois** de todas as specs já mergeadas, `crap.gate: "block"` não impede merge
-nenhum — só faz `review-feature` sair com exit 1, como sinal para quem orquestra. Cobertura não
-gerada, relatório ausente ou escopo sem diretório de testes conhecido = **inconclusivo** (campo
-`note`), nunca aprovação silenciosa — e não impede os demais escopos tocados de serem avaliados.
-
-CRAP é sinal, não alvo: um teste sem `assert` derruba o número igual a um teste bom. Por isso
-nenhuma sessão de modelo recebe "reduza o CRAP" como tarefa — quem lê o número é o job de code
-review e você.
-
-## Revisão automática (por feature, não mais na fase VERIFY)
-
-A fase VERIFY, ao passar os gates, só commita — nem CRAP nem a revisão automática rodam mais
-aqui. Os dois são preparação/execução da revisão por feature, disparados juntos por um único
-comando depois que todas as specs da feature já estiverem mergeadas:
-
-~~~bash
-node $HARNESS review-feature <feature-slug> --base <ref-onde-a-feature-começou>
-~~~
-
-Ver `SKILL.md § Revisão automática — por FEATURE, não por spec`. Marcador `.post-verify.json` em
-`reviews/feature/` impede reexecução no mesmo `head_sha`; `--force` refaz.
-
-O template padrão traz **um job** (`code_review`) com duas passadas na mesma sessão: Passada 1
-usa a skill `code-review-skill` (**não** é dependência garantida do plugin — troque para
-`mattpocock-skills:code-review` se não estiver instalada), Passada 2 usa `ponytail:ponytail-review`
-(essa sim, dependência do plugin `isabella`).
-
-O que olhar antes de continuar:
-
-| Artefato | Para quê |
-|---|---|
-| `.specs/sdd-<feature>/reviews/feature/code-review.md` | achados da Passada 1, por severidade, com arquivo:linha |
-| `.../code-review.json` | veredito estruturado (`blocking`) |
-| `.../ponytail-review.md` | achados da Passada 2 — over-engineering (dependência/abstração desnecessária) |
-| `.../code_review.log` | a sessão crua do agente, quando algo saiu errado |
-| `.../crap.json` | complexidade × cobertura das funções que a feature alterou, agregado por escopo tocado — insumo de `{crap_top}` no prompt acima |
-
-`code-review.json` **ausente** é revisão inconclusiva, não aprovação: o harness imprime o aviso
-e você deve ler o log. Como isso acontece **depois** de todas as specs já mergeadas,
-`post_verify.gate: "block"` não bloqueia merge nenhum — só faz `review-feature` sair com exit 1,
-como sinal para quem orquestra decidir o que fazer (reabrir uma spec, registrar débito, etc.).
-
-`require_quiz_pass` e o job `cognitive_loop` (explicador + micro-mundo + quiz-trava) saíram do
-template padrão — era a sessão mais cara do fluxo, rodando incondicionalmente. Seguem disponíveis
-como skill (`cognitive-loop:explain-diff`) para quem quiser rodar manualmente.
-
-Para revisar **uma spec isolada** manualmente, fora do fluxo padrão:
-
-~~~bash
-node $HARNESS post-verify .specs/sdd-<feature>/packets/.expanded/SDD-NN-verify.yaml
-~~~
-
 ## Retry após falha
 
 O `autorun` já retenta a própria fase (`implementer.max_attempts`, padrão 2), passando os erros
@@ -149,9 +64,7 @@ O verifier ainda deve conferir os campos de `manual_review` da evidência:
 
 `status: ready_for_review` não significa aprovação final. Significa que os gates mecânicos
 passaram e que a revisão semântica pode começar sem recarregar o repositório inteiro — os
-agentes de revisão automática (`code_review`/`ponytail_review`) **ainda não rodaram** nesse
-ponto: eles só rodam por feature, via `review-feature`, depois que todas as specs já
-mergearam.
+a revisão semântica ainda precisa ser executada pela skill `code-review-skill` antes do merge.
 
 ### Atualizar os selos da spec Markdown
 
@@ -175,6 +88,5 @@ semântico, e é seu.
 acontecem no fim do próprio autorun, sem intervalo para leitura.
 
 Lembre que o PR do repositório ainda tem gates próprios de CI (suíte completa, cobertura mínima,
-revisão automática de PR, quando existirem). A revisão automática do harness (`review-feature`)
-acontece depois que as specs já mergearam na branch de trabalho, mas antes do PR dessa branch —
-não é a única, e não substitui a revisão semântica desta seção.
+revisão automática de PR, quando existirem). A revisão de código deve acontecer antes do PR dessa
+branch; ela não substitui a revisão semântica desta seção.

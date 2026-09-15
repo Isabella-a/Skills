@@ -7,7 +7,7 @@
  * Neste repositório o perfil é Python/FastAPI/LangGraph (ruff + pytest).
  *
  * Subcomandos:
- *   init-repo [--force]              (detecta o perfil do repo, cria a config e registra o hook)
+ *   init-repo [--force] [--codex|--claude]
  *   doctor [--json]                  (diagnóstico da config do repo: ERRO bloqueia, AVISO degrada)
  *   validate-spec <spec.md>
  *   validate-packet <packet.yaml>
@@ -19,7 +19,6 @@
  *   verify-packet <packet.yaml>
  *   run-spec <red.yaml> <green.yaml> <verify.yaml>
  *   run-parallel <red1> <green1> <verify1> -- <red2> <green2> <verify2> [-- ...] [--force]
- *   post-verify <verify.yaml>        (reexecuta a revisão automática de uma fase já verificada)
  *   discard-spec-worktree <worktree_path> [--delete-branch]
  *   hook-check                       (uso interno — chamado pelo hook PreToolUse)
  *
@@ -41,8 +40,8 @@ import { fileURLToPath } from "node:url";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 const USAGE = `Subcomandos:
-    init-repo [--force]              (detecta o perfil do repo, escreve
-                                      .claude/spec_harness/harness.config.json e registra o hook)
+    init-repo [--force] [--codex|--claude]
+                                     (detecta o perfil e escreve em .agents/ para Codex ou .claude/ para Claude)
     doctor [--json]                  (diz o que falta configurar neste repo, campo a campo)
     validate-spec <spec.md>
     validate-packet <packet.yaml>
@@ -55,10 +54,6 @@ const USAGE = `Subcomandos:
     verify-packet <packet.yaml>
     run-spec <red.yaml> <green.yaml> <verify.yaml>   (modo manual, uma fase por invocação)
     run-parallel <red1> <green1> <verify1> -- <red2> <green2> <verify2> [-- ...] [--force]
-    post-verify <verify.yaml>        (reexecuta a revisão automática de UMA spec — uso manual, não roda no autorun)
-    review-feature <feature> --base <ref> [--branch <ref>] [--force]
-                                     (code_review/ponytail_review sobre o diff acumulado da feature,
-                                      depois que todas as specs já foram mergeadas)
     discard-spec-worktree <worktree_path> [--delete-branch]
     hook-check                       (uso interno — chamado pelo hook PreToolUse)`;
 
@@ -87,8 +82,10 @@ const BLOCKED_DIR = path.join(HARNESS_HOME, "blocked");
 const METRICS_FILE =
   process.env.SPEC_HARNESS_METRICS_FILE || path.join(HARNESS_HOME, "metrics.jsonl");
 
-const CONFIG_PATH =
-  process.env.SPEC_HARNESS_CONFIG || path.join(REPO_ROOT, ".claude/spec_harness/harness.config.json");
+const CLAUDE_CONFIG_PATH = path.join(REPO_ROOT, ".claude", "spec_harness", "harness.config.json");
+const CODEX_CONFIG_PATH = path.join(REPO_ROOT, ".agents", "spec_harness", "harness.config.json");
+let CONFIG_PATH = process.env.SPEC_HARNESS_CONFIG ||
+  (fs.existsSync(CODEX_CONFIG_PATH) ? CODEX_CONFIG_PATH : CLAUDE_CONFIG_PATH);
 const ABERTO_MARKER = "⚠️ ABERTO:";
 const ID_PATTERN = /\b(?:RF|EC|T)-\d+\b/g;
 
@@ -186,38 +183,6 @@ interface ValidatorConfig {
   cwd?: string;
 }
 
-interface PostVerifyJob {
-  id: string;
-  prompt: string;
-  add_dirs?: string[];
-  plugin_dirs?: string[];
-}
-
-interface PostVerifyConfig {
-  enabled?: boolean;
-  model?: string;
-  timeout_ms?: number;
-  permission_mode?: string;
-  allowed_tools?: string;
-  gate?: "warn" | "block";
-  require_quiz_pass?: boolean;
-  jobs?: PostVerifyJob[];
-}
-
-interface CrapConfig {
-  enabled?: boolean;
-  gate?: "warn" | "block";
-  threshold?: number;
-  top_n?: number;
-  tool?: string;
-  runtime?: "python" | "node";
-  python?: string;
-  node?: string;
-  coverage_command?: string;
-  timeout_ms?: number;
-  scope_tests?: Record<string, string[]>;
-}
-
 interface ScaffoldConfig {
   test_command_template?: string;
 }
@@ -234,46 +199,6 @@ interface HarnessConfig {
   test_markers?: { patterns?: string[] };
   validators?: Record<string, ValidatorConfig | null | string>;
   worktree?: { link_paths?: string[]; copy_paths?: string[] };
-  crap?: CrapConfig;
-  post_verify?: PostVerifyConfig;
-}
-
-interface CrapFunction {
-  file: string;
-  name: string;
-  crap: number;
-  comp: number;
-  cov: number;
-}
-
-interface CrapReport {
-  total_functions?: number;
-  average_crap?: number;
-  high_risk_functions?: CrapFunction[];
-  fallback_functions?: number;
-}
-
-interface CrapSummary {
-  gate: "warn" | "block";
-  threshold: number;
-  scored_files: string[];
-  test_targets: string[];
-  coverage_json: string | null;
-  coverage_returncode: number;
-  report: string | null;
-  total_functions: number;
-  average_crap: number;
-  high_risk: CrapFunction[];
-  errors: string[];
-  note?: string;
-}
-
-interface PostVerifyResult {
-  id: string;
-  returncode: number;
-  log: string;
-  artifacts_dir: string;
-  blocking_findings: number;
 }
 
 // --------------------------------------------------------------------------- utils
@@ -363,12 +288,13 @@ function globalValidators(): ValidatorConfig[] {
     .filter((v): v is ValidatorConfig => !!v && typeof v === "object");
 }
 
-function postVerifyConfig(): PostVerifyConfig {
-  return CFG().post_verify ?? {};
+function gitOut(args: string[], cwd = REPO_ROOT): string {
+  const r = spawnSync("git", ["-C", cwd, ...args], { encoding: "utf-8" });
+  return r.status === 0 ? (r.stdout ?? "").trim() : "";
 }
 
-function crapConfig(): CrapConfig {
-  return CFG().crap ?? {};
+function interpolate(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{(\w+)\}/g, (whole, key: string) => vars[key] ?? whole);
 }
 
 // Comando de teste que o scaffold escreve no packet. Fica na config porque é a única parte do
@@ -1020,16 +946,11 @@ async function verifyPacket(origArg: string, quiet = false): Promise<VerifyOutco
     if (!quiet) console.log(`Commit criado na branch ${run.branch}.`);
   }
 
-  // Nem CRAP nem a revisão automática (code_review) rodam mais aqui: os dois são preparação para
-  // a revisão por FEATURE, não gates mecânicos por spec — repeti-los a cada VERIFY era o maior
-  // custo de token/tempo repetido do autorun. Ver `review-feature` e
-  // `SKILL.md § Revisão automática`.
-
   if (!quiet) {
     console.log(
       "OK: gates automáticos passaram (status: ready_for_review). Isso NÃO é aprovação " +
         "semântica — revise contract.must/must_not e forbidden.behaviors em manual_review, " +
-        "e leia os artefatos da revisão automática antes de mergear."
+        "e conclua a revisão de código antes de mergear."
     );
   }
   return { ok: true, errors: [], evidence_path: evidencePath, changed_files: changed };
@@ -1041,536 +962,6 @@ async function cmdVerifyPacket(args: string[]): Promise<void> {
   if (!outcome.ok) process.exit(1);
 }
 
-
-// --------------------------------------------------------------------------- crap
-
-// Etapa determinística de risco: roda a suíte de cada escopo tocado com relatório JSON de
-// cobertura e pontua CRAP ((complexidade^2 * (1-cobertura)^3) + complexidade) APENAS nas funções
-// de PRODUÇÃO alteradas. Não abre sessão de modelo. CRAP é gameável por teste sem assert, então
-// aqui ele é sinal para a revisão (via {crap_top}), nunca alvo de otimização de um agente.
-//
-// Não roda mais por spec: é preparação para a revisão por FEATURE (a skill de code review), não
-// um gate do VERIFY — ver runFeatureReview. Por isso opera sobre o diff acumulado base...branch
-// no branch de trabalho atual (REPO_ROOT), não num worktree de spec: quando isto roda, as specs
-// já foram mergeadas.
-
-function readCrapReport(reviewDir: string): CrapReport | null {
-  const p = path.join(reviewDir, "crap.json");
-  if (!fs.existsSync(p)) return null;
-  try {
-    return JSON.parse(fs.readFileSync(p, "utf-8")) as CrapReport;
-  } catch {
-    return null;
-  }
-}
-
-// Texto injetado no prompt do code review: transforma o número em pedido concreto de revisão.
-function crapTopText(reviewDir: string): string {
-  const report = readCrapReport(reviewDir);
-  if (!report) {
-    return "(sem relatório de CRAP nesta execução — ignore este critério)";
-  }
-  const top = (report.high_risk_functions ?? []).slice(0, crapConfig().top_n ?? 5);
-  if (!top.length) {
-    return `(nenhuma função acima do limiar de CRAP; média ${(report.average_crap ?? 0).toFixed(2)} em ${report.total_functions ?? 0} função(ões) alterada(s))`;
-  }
-  return top
-    .map(
-      (f) =>
-        `- ${f.file} -> ${f.name}() — CRAP ${f.crap.toFixed(2)} (complexidade ${f.comp}, cobertura ${f.cov.toFixed(1)}%)`
-    )
-    .join("\n");
-}
-
-// Denominador de cobertura: a suíte do escopo inteiro, não só os arquivos da feature. Medir
-// cobertura só pelo que a feature tocou infla o CRAP de código que a suíte já cobre.
-function crapTestTargets(worktree: string, app: string): string[] {
-  const declared = crapConfig().scope_tests?.[app];
-  if (declared?.length) return declared;
-  const out: string[] = [];
-  for (const prefix of scopePaths(app)) {
-    const trimmed = prefix.replace(/\/$/, "");
-    if (looksLikeTestPath(prefix)) {
-      out.push(trimmed);
-      continue;
-    }
-    const candidate = `${trimmed}/tests`;
-    if (fs.existsSync(path.join(worktree, candidate))) out.push(candidate);
-  }
-  return out;
-}
-
-function crapScopedFiles(scope: string, changedFiles: string[]): string[] {
-  const prefixes = scopePaths(scope);
-  const exts = sourceExtensions();
-  return changedFiles.filter(
-    (f) => prefixes.some((p) => f.startsWith(p)) && exts.some((e) => f.endsWith(e)) && !looksLikeTestPath(f)
-  );
-}
-
-function runCrapForFeature(
-  base: string,
-  branch: string,
-  reviewDir: string,
-  quiet: boolean
-): { summary: CrapSummary; errors: string[] } | null {
-  const cfg = crapConfig();
-  if (!cfg.enabled || !cfg.coverage_command || !cfg.tool) return null;
-
-  const changedFiles = gitOut(["diff", "--name-only", `${base}...${branch}`])
-    .split("\n")
-    .map((f) => f.trim())
-    .filter(Boolean);
-  const touchedScopes = scopeNames().filter((scope) => crapScopedFiles(scope, changedFiles).length);
-  if (!touchedScopes.length) return null;
-
-  const gate = cfg.gate ?? "warn";
-  const threshold = cfg.threshold ?? 30;
-  const runtime = cfg.runtime ?? "node";
-  const interpreter = runtime === "python" ? (cfg.python ?? "python") : (cfg.node ?? "node");
-  const tool = resolveEnginePath(cfg.tool!);
-
-  fs.mkdirSync(reviewDir, { recursive: true });
-  const coverageDir = path.join(HARNESS_HOME, "coverage");
-  fs.mkdirSync(coverageDir, { recursive: true });
-
-  const errors: string[] = [];
-  const notes: string[] = [];
-  const summary: CrapSummary = {
-    gate,
-    threshold,
-    scored_files: [],
-    test_targets: [],
-    coverage_json: null,
-    coverage_returncode: 0,
-    report: null,
-    total_functions: 0,
-    average_crap: 0,
-    high_risk: [],
-    errors: [],
-  };
-  let weightedSum = 0;
-
-  for (const scope of touchedScopes) {
-    const scoped = crapScopedFiles(scope, changedFiles);
-    const testTargets = crapTestTargets(REPO_ROOT, scope);
-    summary.scored_files.push(...scoped);
-    if (!testTargets.length) {
-      notes.push(`escopo '${scope}' não tem diretório de testes conhecido — configure crap.scope_tests`);
-      continue;
-    }
-    summary.test_targets.push(...testTargets);
-
-    if (!quiet) {
-      console.log(
-        `\nCRAP [${scope}] (gate: ${gate}, limiar ${threshold}) — ${scoped.length} arquivo(s), ` +
-          `cobertura medida por: ${testTargets.join(" ")}`
-      );
-    }
-
-    // Python (coverage.py) escreve exatamente no arquivo que --cov-report=json:{coverage_json}
-    // apontar. Node (vitest/jest/nyc) só deixa escolher o DIRETÓRIO de relatórios — o nome do
-    // arquivo (coverage-final.json) é fixo do reporter Istanbul — então {coverage_json} aqui
-    // recebe o diretório, e o arquivo esperado é sempre <diretório>/coverage-final.json.
-    const scopeCoverageDir = path.join(coverageDir, `feature-${scope}`);
-    const scopeCoverageJson =
-      runtime === "python" ? path.join(coverageDir, `feature-${scope}.json`) : path.join(scopeCoverageDir, "coverage-final.json");
-    const coverageCommandArg = runtime === "python" ? scopeCoverageJson : scopeCoverageDir;
-    const scopeListFile = path.join(reviewDir, `.crap-arquivos-${scope}.txt`);
-    fs.writeFileSync(scopeListFile, scoped.join("\n") + "\n", "utf-8");
-
-    const covCmd = cfg
-      .coverage_command!.replaceAll("{coverage_json}", coverageCommandArg)
-      .replaceAll("{test_targets}", testTargets.join(" "));
-    const cov = runCmd(covCmd, REPO_ROOT, cfg.timeout_ms ?? 900_000);
-    summary.coverage_returncode = cov.code;
-    summary.coverage_json = scopeCoverageJson;
-    if (!fs.existsSync(scopeCoverageJson)) {
-      notes.push(`[${scope}] relatório de cobertura não gerado (exit ${cov.code}).`);
-      continue;
-    }
-
-    const scopeCrapJson = path.join(reviewDir, `.crap-${scope}.json`);
-    const toolCmd =
-      `${interpreter} ${JSON.stringify(tool)} --coverage-json ${JSON.stringify(scopeCoverageJson)} ` +
-      `--source-dir ${JSON.stringify(REPO_ROOT)} --only-from ${JSON.stringify(scopeListFile)} ` +
-      `--threshold ${threshold} --json-out ${JSON.stringify(scopeCrapJson)}`;
-    const toolRun = runCmd(toolCmd, REPO_ROOT, cfg.timeout_ms ?? 900_000);
-    const report = fs.existsSync(scopeCrapJson)
-      ? (JSON.parse(fs.readFileSync(scopeCrapJson, "utf-8")) as CrapReport)
-      : null;
-    fs.rmSync(scopeCrapJson, { force: true });
-    fs.rmSync(scopeListFile, { force: true });
-    if (!report) {
-      notes.push(`[${scope}] crap_calculator não produziu relatório (exit ${toolRun.code}).`);
-      continue;
-    }
-
-    summary.total_functions += report.total_functions ?? 0;
-    weightedSum += (report.average_crap ?? 0) * (report.total_functions ?? 0);
-    summary.high_risk.push(...(report.high_risk_functions ?? []));
-  }
-
-  summary.average_crap = summary.total_functions ? weightedSum / summary.total_functions : 0;
-  summary.high_risk.sort((a, b) => b.crap - a.crap);
-  if (notes.length) summary.note = notes.join(" | ");
-
-  fs.writeFileSync(path.join(reviewDir, "crap-arquivos.txt"), summary.scored_files.join("\n") + "\n", "utf-8");
-  fs.writeFileSync(
-    path.join(reviewDir, "crap.json"),
-    JSON.stringify(
-      { total_functions: summary.total_functions, average_crap: summary.average_crap, high_risk_functions: summary.high_risk },
-      null,
-      2
-    ),
-    "utf-8"
-  );
-  summary.report = path.relative(REPO_ROOT, path.join(reviewDir, "crap.json"));
-
-  if (!summary.total_functions) {
-    if (!quiet) console.log(`  AVISO (crap): ${summary.note ?? "nenhuma função analisada."}`);
-    return { summary, errors };
-  }
-
-  if (!quiet) {
-    console.log(
-      `\nCRAP (feature): ${summary.total_functions} função(ões) pontuada(s), CRAP médio ` +
-        `${summary.average_crap.toFixed(2)} — ${summary.high_risk.length} acima de ${threshold}`
-    );
-    for (const f of summary.high_risk.slice(0, cfg.top_n ?? 5)) {
-      console.log(`    ${f.file} -> ${f.name}() CRAP ${f.crap.toFixed(2)} (comp ${f.comp}, cov ${f.cov.toFixed(1)}%)`);
-    }
-  }
-
-  if (summary.high_risk.length) {
-    const msg = `${summary.high_risk.length} função(ões) alterada(s) com CRAP > ${threshold} — ver ${summary.report}`;
-    if (gate === "block") {
-      errors.push(msg);
-      summary.errors.push(msg);
-    } else if (!quiet) {
-      console.log(`  AVISO (crap): ${msg}`);
-    }
-  }
-
-  return { summary, errors };
-}
-
-// --------------------------------------------------------------------------- post-verify
-
-// Revisão automática que roda DEPOIS que a fase VERIFY passa nos gates e commita: um agente de
-// code review e o loop cognitivo (explain-diff + micro mundos + quiz), em paralelo, cada um numa
-// sessão `claude -p` headless com o modelo declarado na config (sonnet, por custo). O harness não
-// escreve prompt nenhum: eles vêm de post_verify.jobs[].prompt na config.
-
-function gitOut(args: string[], cwd = REPO_ROOT): string {
-  const r = spawnSync("git", ["-C", cwd, ...args], { encoding: "utf-8" });
-  return r.status === 0 ? (r.stdout ?? "").trim() : "";
-}
-
-// Diretório dos artefatos de revisão da spec: .specs/sdd-<feature>/reviews/<NN>/
-function reviewDirFor(packet: Packet): string {
-  const spec = packet.source_spec ?? "";
-  const marker = "/specs/";
-  const featureDir = spec.includes(marker) ? spec.slice(0, spec.indexOf(marker)) : path.dirname(spec);
-  const num = String(Number(packet.spec_number ?? 0)).padStart(2, "0");
-  return path.join(REPO_ROOT, featureDir, "reviews", num);
-}
-
-function interpolate(template: string, vars: Record<string, string>): string {
-  return template.replace(/\{(\w+)\}/g, (whole, key: string) => vars[key] ?? whole);
-}
-
-function runClaudeJob(
-  job: PostVerifyJob,
-  vars: Record<string, string>,
-  cfg: PostVerifyConfig,
-  logPath: string
-): Promise<PostVerifyResult> {
-  const args = [
-    "-p",
-    interpolate(job.prompt, vars),
-    "--model",
-    cfg.model ?? "sonnet",
-    "--permission-mode",
-    cfg.permission_mode ?? "acceptEdits",
-    "--output-format",
-    "text",
-    "--allowedTools",
-    cfg.allowed_tools ?? "Read Grep Glob Bash Write Edit",
-  ];
-  for (const d of job.add_dirs ?? []) args.push("--add-dir", d);
-  for (const d of job.plugin_dirs ?? []) args.push("--plugin-dir", d);
-
-  return new Promise((resolve) => {
-    const started = Date.now();
-    const child = spawn("claude", args, {
-      cwd: REPO_ROOT,
-      env: process.env,
-      timeout: cfg.timeout_ms ?? 2_400_000,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    const chunks: string[] = [];
-    child.stdout.on("data", (d) => chunks.push(String(d)));
-    child.stderr.on("data", (d) => chunks.push(String(d)));
-    child.on("error", (err) => {
-      chunks.push(`\n[spawn error] ${String(err)}`);
-    });
-    child.on("close", (code) => {
-      const elapsed = ((Date.now() - started) / 1000).toFixed(0);
-      const output = chunks.join("");
-      fs.writeFileSync(logPath, output, "utf-8");
-      console.log(`  [${job.id}] terminou em ${elapsed}s (exit ${code ?? 1}) — log: ${logPath}`);
-      resolve({
-        id: job.id,
-        returncode: code ?? 1,
-        log: logPath,
-        artifacts_dir: vars.out,
-        blocking_findings: 0,
-      });
-    });
-  });
-}
-
-// Lê o veredito estruturado que o job de code review deve gravar. Ausência de arquivo é
-// inconclusivo, não aprovação — por isso vira aviso explícito, nunca 0 silencioso.
-function readReviewVerdict(reviewDir: string): { found: boolean; blocking: number } {
-  const p = path.join(reviewDir, "code-review.json");
-  if (!fs.existsSync(p)) return { found: false, blocking: 0 };
-  try {
-    const data = JSON.parse(fs.readFileSync(p, "utf-8")) as {
-      blocking?: boolean;
-      findings?: Array<{ blocking?: boolean }>;
-    };
-    const blocking = (data.findings ?? []).filter((f) => f.blocking).length;
-    return { found: true, blocking: blocking || (data.blocking ? 1 : 0) };
-  } catch {
-    return { found: false, blocking: 0 };
-  }
-}
-
-// Marcador de "esta spec já foi revisada": a revisão automática é cara (duas sessões sonnet com
-// repo-grounding) e o resultado só muda se o código mudar. Reverificar a fase VERIFY — o que
-// acontece a cada retry do autorun — não pode disparar tudo de novo.
-function postVerifyMarker(reviewDir: string): string {
-  return path.join(reviewDir, ".post-verify.json");
-}
-
-async function runPostVerify(
-  packet: Packet,
-  run: RunState,
-  force = false
-): Promise<{ results: PostVerifyResult[]; errors: string[]; reviewDir: string }> {
-  const cfg = postVerifyConfig();
-  const jobs = (cfg.jobs ?? []).filter((j) => j && j.id && j.prompt);
-  const reviewDir = reviewDirFor(packet);
-  if (!cfg.enabled || !jobs.length) return { results: [], errors: [], reviewDir };
-
-  const marker = postVerifyMarker(reviewDir);
-  if (!force && fs.existsSync(marker)) {
-    const previous = JSON.parse(fs.readFileSync(marker, "utf-8")) as {
-      results?: PostVerifyResult[];
-      errors?: string[];
-      head_sha?: string;
-    };
-    console.log(
-      `  revisão automática já executada para esta spec (${previous.head_sha ?? "?"}) — ` +
-        `reaproveitando ${path.relative(REPO_ROOT, reviewDir)}/. Para refazer: ` +
-        `\`harness.ts post-verify <verify.yaml>\`.`
-    );
-    return { results: previous.results ?? [], errors: previous.errors ?? [], reviewDir };
-  }
-
-  fs.mkdirSync(reviewDir, { recursive: true });
-  const target = currentBranch();
-  const base = gitOut(["merge-base", target, run.branch]) || target;
-  const headSha = gitOut(["rev-parse", "--short", run.branch]);
-
-  const vars: Record<string, string> = {
-    spec: packet.source_spec ?? "",
-    feature: String(packet.feature ?? ""),
-    num: String(Number(packet.spec_number ?? 0)).padStart(2, "0"),
-    branch: run.branch,
-    base,
-    head_sha: headSha,
-    out: path.relative(REPO_ROOT, reviewDir),
-    worktree: run.worktree,
-    app: String(packet.app ?? ""),
-    crap_top: crapTopText(reviewDir),
-  };
-
-  console.log(
-    `\nRevisão automática pós-VERIFY (${cfg.model ?? "sonnet"}, ${jobs.length} agentes em paralelo): ` +
-      `${jobs.map((j) => j.id).join(", ")}`
-  );
-  console.log(`  diff revisado: git diff ${base}...${run.branch}`);
-  console.log(`  artefatos em: ${vars.out}/`);
-
-  const results = await Promise.all(
-    jobs.map((job) => runClaudeJob(job, vars, cfg, path.join(reviewDir, `${job.id}.log`)))
-  );
-
-  const errors: string[] = [];
-  const verdict = readReviewVerdict(reviewDir);
-  for (const r of results) {
-    if (r.id === "code_review") r.blocking_findings = verdict.blocking;
-    if (r.returncode !== 0) {
-      const msg = `agente '${r.id}' terminou com exit ${r.returncode} — ver ${r.log}`;
-      if ((cfg.gate ?? "warn") === "block") errors.push(msg);
-      else console.log(`  AVISO: ${msg}`);
-    }
-  }
-  if (!verdict.found) {
-    console.log(
-      "  AVISO: code-review.json não foi gravado — revisão inconclusiva, leia o log antes de mergear."
-    );
-  } else if (verdict.blocking) {
-    const msg = `code review apontou ${verdict.blocking} achado(s) bloqueante(s) — ver ${path.relative(REPO_ROOT, reviewDir)}/code-review.md`;
-    if ((cfg.gate ?? "warn") === "block") errors.push(msg);
-    else console.log(`  AVISO: ${msg}`);
-  }
-
-  fs.writeFileSync(
-    postVerifyMarker(reviewDir),
-    JSON.stringify({ head_sha: headSha, at: Date.now() / 1000, results, errors }, null, 2),
-    "utf-8"
-  );
-
-  return { results, errors, reviewDir };
-}
-
-async function cmdPostVerify(args: string[]): Promise<void> {
-  if (!args.length) die("uso: post-verify <verify.yaml>");
-  let packetPath = args[0];
-  if (!path.isAbsolute(packetPath)) packetPath = path.join(REPO_ROOT, packetPath);
-  const packet = loadYaml(packetPath) as Packet;
-  const run = loadActiveRun(packetKey(packet));
-  if (!run) die("não há execução ativa para esta spec — rode run-spec/open-packet antes.");
-  // Invocação explícita é sempre refazimento: ignora o marcador.
-  const { errors } = await runPostVerify(packet, run, true);
-  if (errors.length) {
-    for (const e of errors) console.error(`  - ${e}`);
-    process.exit(1);
-  }
-}
-
-// --------------------------------------------------------------------------- review-feature
-
-// Revisão automática por FEATURE, não por spec: CRAP e code_review rodam UMA vez sobre o diff
-// acumulado de todas as specs já mergeadas na branch de trabalho, em vez de repetir os mesmos
-// passos (cada um custando sessão/suíte de teste inteira) a cada spec — que era o maior custo
-// repetido do autorun. CRAP roda primeiro, aqui mesmo: ele é preparação para a skill de code
-// review (via {crap_top}), não um gate mecânico do VERIFY. Diferença central em relação a
-// runPostVerify: aqui as specs já foram mergeadas, então "gate: block" não impede merge nenhum —
-// é sinal para quem orquestra revisar, não enforcement.
-async function runFeatureReview(
-  feature: string,
-  base: string,
-  branch: string,
-  force: boolean
-): Promise<{ results: PostVerifyResult[]; errors: string[]; reviewDir: string }> {
-  const cfg = postVerifyConfig();
-  const jobs = (cfg.jobs ?? []).filter((j) => j && j.id && j.prompt);
-  const featureDir = path.join(REPO_ROOT, ".specs", `sdd-${feature}`);
-  const reviewDir = path.join(featureDir, "reviews", "feature");
-  if (!cfg.enabled || !jobs.length) return { results: [], errors: [], reviewDir };
-
-  const marker = postVerifyMarker(reviewDir);
-  const headSha = gitOut(["rev-parse", "--short", branch]);
-  if (!force && fs.existsSync(marker)) {
-    const previous = JSON.parse(fs.readFileSync(marker, "utf-8")) as {
-      results?: PostVerifyResult[];
-      errors?: string[];
-      head_sha?: string;
-    };
-    if (previous.head_sha === headSha) {
-      console.log(
-        `  revisão da feature já executada neste head (${headSha}) — reaproveitando ` +
-          `${path.relative(REPO_ROOT, reviewDir)}/. Para refazer: --force.`
-      );
-      return { results: previous.results ?? [], errors: previous.errors ?? [], reviewDir };
-    }
-  }
-
-  fs.mkdirSync(reviewDir, { recursive: true });
-
-  const errors: string[] = [];
-  const crapResult = runCrapForFeature(base, branch, reviewDir, false);
-  if (crapResult) errors.push(...crapResult.errors);
-
-  const vars: Record<string, string> = {
-    feature,
-    branch,
-    base,
-    head_sha: headSha,
-    out: path.relative(REPO_ROOT, reviewDir),
-    crap_top: crapTopText(reviewDir),
-  };
-
-  console.log(
-    `\nRevisão automática por feature (${cfg.model ?? "sonnet"}, ${jobs.length} agentes em paralelo): ` +
-      `${jobs.map((j) => j.id).join(", ")}`
-  );
-  console.log(`  diff revisado: git diff ${base}...${branch}`);
-  console.log(`  artefatos em: ${vars.out}/`);
-
-  const results = await Promise.all(
-    jobs.map((job) => runClaudeJob(job, vars, cfg, path.join(reviewDir, `${job.id}.log`)))
-  );
-
-  const verdict = readReviewVerdict(reviewDir);
-  for (const r of results) {
-    if (r.id === "code_review") r.blocking_findings = verdict.blocking;
-    if (r.returncode !== 0) {
-      const msg = `agente '${r.id}' terminou com exit ${r.returncode} — ver ${r.log}`;
-      if ((cfg.gate ?? "warn") === "block") errors.push(msg);
-      else console.log(`  AVISO: ${msg}`);
-    }
-  }
-  if (!verdict.found) {
-    console.log("  AVISO: code-review.json não foi gravado — revisão inconclusiva, leia o log.");
-  } else if (verdict.blocking) {
-    const msg = `code review apontou ${verdict.blocking} achado(s) bloqueante(s) — ver ${path.relative(REPO_ROOT, reviewDir)}/code-review.md`;
-    if ((cfg.gate ?? "warn") === "block") errors.push(msg);
-    else console.log(`  AVISO: ${msg}`);
-  }
-
-  fs.writeFileSync(
-    marker,
-    JSON.stringify({ head_sha: headSha, at: Date.now() / 1000, results, errors }, null, 2),
-    "utf-8"
-  );
-
-  return { results, errors, reviewDir };
-}
-
-async function cmdReviewFeature(args: string[]): Promise<void> {
-  if (!args.length) {
-    die("uso: review-feature <feature-slug> --base <ref> [--branch <ref>] [--force]");
-  }
-  const feature = args[0];
-  const baseIdx = args.indexOf("--base");
-  const branchIdx = args.indexOf("--branch");
-  const force = args.includes("--force");
-  if (baseIdx === -1 || !args[baseIdx + 1]) {
-    die(
-      "review-feature precisa de --base <ref> explícito (ex.: o commit onde a feature começou, " +
-        "ou a branch default do repo) — o harness não adivinha onde a feature divergiu."
-    );
-  }
-  const base = args[baseIdx + 1];
-  const branch = branchIdx !== -1 && args[branchIdx + 1] ? args[branchIdx + 1] : currentBranch();
-
-  const featureDir = path.join(REPO_ROOT, ".specs", `sdd-${feature}`);
-  if (!fs.existsSync(featureDir)) {
-    die(`pasta não encontrada: ${path.relative(REPO_ROOT, featureDir)}`);
-  }
-
-  const { errors } = await runFeatureReview(feature, base, branch, force);
-  if (errors.length) {
-    for (const e of errors) console.error(`  - ${e}`);
-    process.exit(1);
-  }
-}
 
 // --------------------------------------------------------------------------- run-spec
 
@@ -1783,18 +1174,6 @@ function clearActiveRun(runId: string): void {
 function mergeSpecBranch(key: string, run: RunState): void {
   const target = currentBranch();
 
-  // Trava do /quizzes: só mergeia se o dev tiver gabaritado o quiz da ponta desta branch.
-  if (postVerifyConfig().require_quiz_pass) {
-    const sha = gitOut(["rev-parse", "--short", run.branch]);
-    const marker = path.join(REPO_ROOT, ".cognitive-loop", "quiz", `${sha}.passed`);
-    if (!fs.existsSync(marker)) {
-      die(
-        `[${key}] quiz da mudança ainda não foi gabaritado (${path.relative(REPO_ROOT, marker)} ` +
-          "ausente) — abra o quiz.html gerado pela revisão automática e acerte tudo, ou desligue " +
-          "post_verify.require_quiz_pass na config. Nada foi mergeado nem apagado."
-      );
-    }
-  }
   if (target === run.branch) {
     console.log(`[${key}] branch de trabalho já é ${run.branch} — nada para mergear.`);
   } else {
@@ -2291,11 +1670,15 @@ function cmdScaffoldPacket(args: string[]): void {
 // --------------------------------------------------------------------------- autorun
 
 interface ImplementerConfig {
+  runtime?: "codex" | "claude";
   model?: string;
+  sandbox?: "read-only" | "workspace-write" | "danger-full-access";
+  approve_for_me?: boolean;
   timeout_ms?: number;
   permission_mode?: string;
   allowed_tools?: string;
   max_attempts?: number;
+  max_budget_usd?: number;
   prompts?: Record<string, string>;
   lean_context?: boolean;
   reuse_session?: boolean;
@@ -2304,6 +1687,10 @@ interface ImplementerConfig {
 
 function implementerConfig(): ImplementerConfig {
   return (CFG() as HarnessConfig & { implementer?: ImplementerConfig }).implementer ?? {};
+}
+
+function implementerRuntime(): "codex" | "claude" {
+  return implementerConfig().runtime ?? "claude";
 }
 
 function autorunLogDir(key: string): string {
@@ -2425,37 +1812,41 @@ function runImplementer(
       blocoDeDocsDaFase(phase) +
       BLOCO_FALHA_DE_AMBIENTE;
 
-  const args = [
-    "-p",
-    prompt,
-    "--model",
-    cfg.model ?? "sonnet",
-    "--permission-mode",
-    cfg.permission_mode ?? "acceptEdits",
-    "--output-format",
-    "text",
-    "--allowedTools",
-    cfg.allowed_tools ?? "Read Grep Glob Bash Write Edit",
-  ];
-
-  if (reuse) {
-    if (!run.session_id) {
-      run.session_id = crypto.randomUUID();
-      saveRun(run);
+  const runtime = implementerRuntime();
+  const args: string[] = [];
+  let command: "codex" | "claude";
+  if (runtime === "codex") {
+    command = "codex";
+    if (retomando) {
+      args.push("exec", "resume", "--json", run.session_id!, prompt);
+    } else {
+      args.push("exec", "--json", "--cd", run.worktree, "--sandbox", cfg.sandbox ?? "workspace-write");
+      if (cfg.approve_for_me !== false) args.push("--approve-for-me");
+      if (cfg.model) args.push("--model", cfg.model);
+      args.push(prompt);
     }
-    args.push(retomando ? "--resume" : "--session-id", run.session_id);
-  }
-
-  // Corte de desperdício puro: nada aqui remove instrução que o modelo use. `system_prompt`
-  // substitui as diretrizes de ferramenta do Claude Code — é trocar qualidade por token, então
-  // fica desligado por padrão mesmo com lean_context ligado.
-  if (cfg.lean_context !== false) {
-    args.push("--strict-mcp-config", "--setting-sources", "project,local", "--settings", leanSettingsJson());
-    if (cfg.system_prompt) args.push("--system-prompt", cfg.system_prompt);
+  } else {
+    command = "claude";
+    args.push(
+      "-p", prompt, "--model", cfg.model ?? "sonnet", "--permission-mode",
+      cfg.permission_mode ?? "acceptEdits", "--output-format", "text", "--allowedTools",
+      cfg.allowed_tools ?? "Read Grep Glob Bash Write Edit"
+    );
+    if (reuse) {
+      if (!run.session_id) {
+        run.session_id = crypto.randomUUID();
+        saveRun(run);
+      }
+      args.push(retomando ? "--resume" : "--session-id", run.session_id);
+    }
+    if (cfg.lean_context !== false) {
+      args.push("--strict-mcp-config", "--setting-sources", "project,local", "--settings", leanSettingsJson());
+      if (cfg.system_prompt) args.push("--system-prompt", cfg.system_prompt);
+    }
   }
 
   return new Promise((resolve) => {
-    const child = spawn("claude", args, {
+    const child = spawn(command, args, {
       cwd: run.worktree,
       env: process.env,
       timeout: cfg.timeout_ms ?? 2_400_000,
@@ -2466,7 +1857,17 @@ function runImplementer(
     child.stderr.on("data", (d) => chunks.push(String(d)));
     child.on("error", (err) => chunks.push(`\n[spawn error] ${String(err)}`));
     child.on("close", (code) => {
-      fs.writeFileSync(logPath, chunks.join(""), "utf-8");
+      const output = chunks.join("");
+      fs.writeFileSync(logPath, output, "utf-8");
+      if (runtime === "codex" && reuse && !retomando && code === 0) {
+        const match = output.match(/"thread_id"\s*:\s*"([0-9a-f-]{36})"/i);
+        if (match) {
+          run.session_id = match[1];
+          saveRun(run);
+        } else {
+          console.log("  AVISO: Codex não retornou thread_id; a próxima fase abrirá uma sessão nova.");
+        }
+      }
       resolve(code ?? 1);
     });
   });
@@ -2625,8 +2026,6 @@ interface Deteccao {
   lint: string | null;
   scopes: Record<string, { paths: string[] }>;
   copy_paths: string[];
-  crap: { enabled: boolean; runtime?: "python" | "node"; tool?: string; coverage_command?: string };
-  cognitive_loop_dir: string | null;
   pendencias: string[];
   notas: string[];
 }
@@ -2642,18 +2041,8 @@ function repoTem(rel: string): boolean {
 }
 
 function temBinario(bin: string): boolean {
-  return runCmd(`command -v ${bin}`, REPO_ROOT, 10_000).code === 0;
-}
-
-function pythonImporta(mod: string): boolean {
-  return runCmd(`python -c "import ${mod}"`, REPO_ROOT, 30_000).code === 0;
-}
-
-function nodeModuloResolvivel(mod: string): boolean {
-  // runCmd roda via `/bin/bash -c`, então o argumento de -e já vai entre aspas duplas do shell —
-  // JSON.stringify(mod) aninharia aspas duplas dentro de aspas duplas e quebraria o parsing.
-  // Aspas simples na literal JS passam ilesas por dentro de aspas duplas do bash.
-  return runCmd(`node -e "require.resolve('${mod}')"`, REPO_ROOT, 30_000).code === 0;
+  const check = process.platform === "win32" ? `where ${bin}` : `command -v ${bin}`;
+  return runCmd(check, REPO_ROOT, 10_000).code === 0;
 }
 
 function subdiretorios(rel: string): string[] {
@@ -2797,65 +2186,6 @@ function detectaLint(linguagem: string, pendencias: string[]): string | null {
   return null;
 }
 
-// Chute informado do comando de cobertura Node — como o de Python, é ponto de revisão humana
-// (ver ressalva no README). Prioriza o runner já declarado em package.json; sem nenhum dos três,
-// não adivinha um comando que provavelmente erra.
-// Sinal primário: o PROJECT_MAP.md do repo (gerado pela skill project-map) já registra o
-// framework de teste com evidência real — "## 6. Testes § Comando exato" — em vez de suposição.
-// Reaproveitar isso evita redetectar às cegas o que já foi verificado por outra skill.
-function testRunnerFromProjectMap(): "vitest" | "jest" | "nyc" | "c8" | null {
-  const mapPath = path.join(REPO_ROOT, "PROJECT_MAP.md");
-  if (!fs.existsSync(mapPath)) return null;
-  let content: string;
-  try {
-    content = fs.readFileSync(mapPath, "utf-8");
-  } catch {
-    return null;
-  }
-  const secao = content.split(/^## \d+\.\s+/m).find((s) => /^Testes\b/.test(s));
-  if (!secao) return null;
-  for (const runner of ["vitest", "jest", "nyc", "c8"] as const) {
-    if (new RegExp(`\\b${runner}\\b`, "i").test(secao)) return runner;
-  }
-  return null;
-}
-
-// {coverage_json} aqui é sempre um DIRETÓRIO (ver runCrapForFeature): vitest/jest/nyc só deixam
-// escolher onde escrever o relatório, não o nome do arquivo — o reporter Istanbul sempre grava
-// coverage-final.json dentro do diretório indicado.
-function coverageCommandFor(runner: "vitest" | "jest" | "nyc" | "c8"): string {
-  switch (runner) {
-    case "vitest":
-      return "npx vitest run --coverage --coverage.provider=istanbul --coverage.reporter=json --coverage.reportsDirectory={coverage_json} {test_targets}";
-    case "jest":
-      return "npx jest --coverage --coverageReporters=json --coverageDirectory={coverage_json} {test_targets}";
-    case "nyc":
-    case "c8":
-      return "npx nyc --reporter=json --report-dir={coverage_json} -- <comando de teste do repo> {test_targets}";
-  }
-}
-
-function detectaCoverageCommandNode(): string | null {
-  const runnerFromMap = testRunnerFromProjectMap();
-  if (runnerFromMap) return coverageCommandFor(runnerFromMap);
-
-  // Sem PROJECT_MAP.md, ou sem menção a um runner conhecido nele: cai para o que
-  // package.json declara (sinal mais fraco — presença de dependência, não uso confirmado).
-  const pkgPath = path.join(REPO_ROOT, "package.json");
-  if (!fs.existsSync(pkgPath)) return null;
-  let pkg: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
-  try {
-    pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-  } catch {
-    return null;
-  }
-  const deps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
-  if (deps.vitest) return coverageCommandFor("vitest");
-  if (deps.jest) return coverageCommandFor("jest");
-  if (deps.nyc || deps.c8) return coverageCommandFor("nyc");
-  return null;
-}
-
 function detectaPerfil(): Deteccao {
   const pendencias: string[] = [];
   const notas: string[] = [];
@@ -2874,58 +2204,6 @@ function detectaPerfil(): Deteccao {
   const copyPaths = !PLUGIN_ROOT || repoTem(".claude/settings.json") ? [".claude/settings.json"] : [];
   for (const f of [".env", ".env.test", ".env.local"]) if (repoTem(f)) copyPaths.push(f);
 
-  const raiz = raizDeCodigo(exts) ?? ".";
-  const pythonCrapOk = linguagem === "python" && pythonImporta("radon") && pythonImporta("pytest_cov");
-  const nodeCoverageCommand = linguagem === "node" ? detectaCoverageCommandNode() : null;
-  const nodeCrapOk = linguagem === "node" && !!nodeCoverageCommand && nodeModuloResolvivel("eslintcc");
-
-  let crap: { enabled: boolean; runtime?: "python" | "node"; tool?: string; coverage_command?: string };
-  if (pythonCrapOk) {
-    crap = {
-      enabled: true,
-      coverage_command:
-        `pytest -q -p no:cacheprovider --cov=${raiz} --cov-report=json:{coverage_json} ` +
-        "--cov-fail-under=0 {test_targets}",
-    };
-  } else if (nodeCrapOk) {
-    crap = {
-      enabled: true,
-      runtime: "node",
-      tool: "tools/crap_calculator.ts",
-      coverage_command: nodeCoverageCommand!,
-    };
-  } else {
-    crap = { enabled: false };
-  }
-  if (!crap.enabled) {
-    if (linguagem === "python") {
-      notas.push(
-        "crap: desligado — a etapa exige Python com `radon` e `pytest-cov` no ambiente. Ligue com " +
-          "enabled=true depois de instalá-los; o resto do harness não depende dela."
-      );
-    } else if (linguagem === "node") {
-      const falta: string[] = [];
-      if (!nodeCoverageCommand) falta.push("nenhum runner de teste conhecido (vitest/jest/nyc/c8) em package.json");
-      if (!nodeModuloResolvivel("eslintcc")) falta.push("`eslintcc` não resolvível (instale como devDependency)");
-      notas.push(
-        `crap: desligado — ${falta.join("; ")}. Ligue com enabled=true, runtime="node", ` +
-          "tool=\"tools/crap_calculator.ts\" depois de resolver; o resto do harness não depende dela."
-      );
-    } else {
-      notas.push(
-        "crap: desligado — sem detector para esta linguagem. Ligue manualmente se houver um " +
-          "equivalente a radon/eslintcc disponível; o resto do harness não depende dela."
-      );
-    }
-  }
-
-  const candidatosCL = [
-    process.env.COGNITIVE_LOOP_DIR,
-    path.join(os.homedir(), "repositorios", "cognitive-loop"),
-    path.join(os.homedir(), "cognitive-loop"),
-  ].filter((c): c is string => !!c);
-  const cognitiveLoopDir = candidatosCL.find((c) => fs.existsSync(c)) ?? null;
-
   return {
     linguagem,
     source_extensions: exts,
@@ -2934,8 +2212,6 @@ function detectaPerfil(): Deteccao {
     lint: detectaLint(linguagem, pendencias),
     scopes: detectaScopes(exts, pendencias),
     copy_paths: copyPaths,
-    crap,
-    cognitive_loop_dir: cognitiveLoopDir,
     pendencias,
     notas,
   };
@@ -3018,35 +2294,20 @@ function aplicaDeteccao(perfil: PerfilJson, d: Deteccao): PerfilJson {
 
   out.worktree = { ...((out.worktree as PerfilJson) ?? {}), link_paths: [], copy_paths: d.copy_paths };
 
-  const crap = { ...((out.crap as PerfilJson) ?? {}) };
-  crap.enabled = d.crap.enabled;
-  if (d.crap.coverage_command) crap.coverage_command = d.crap.coverage_command;
-  if (d.crap.runtime) crap.runtime = d.crap.runtime;
-  if (d.crap.tool) crap.tool = d.crap.tool;
-  out.crap = crap;
-
-  const postVerify = { ...((out.post_verify as PerfilJson) ?? {}) };
-  const jobs = ((postVerify.jobs as Array<Record<string, unknown>>) ?? []).filter((j) => {
-    if (j.id !== "cognitive_loop") return true;
-    if (!d.cognitive_loop_dir) return false;
-    j.add_dirs = [d.cognitive_loop_dir];
-    j.plugin_dirs = [d.cognitive_loop_dir];
-    delete j._comment;
-    return true;
-  });
-  postVerify.jobs = jobs;
-  out.post_verify = postVerify;
-
   return out;
 }
 
 function cmdInitRepo(args: string[]): void {
   const force = args.includes("--force");
+  const runtime: "codex" | "claude" = args.includes("--claude") || (PLUGIN_ROOT && !args.includes("--codex"))
+    ? "claude"
+    : "codex";
   const template = path.join(HARNESS_DIR, "templates", "harness.config.template.json");
   if (!fs.existsSync(template)) die(`template não encontrado: ${template}`);
 
-  const destDir = path.join(REPO_ROOT, ".claude", "spec_harness");
+  const destDir = path.join(REPO_ROOT, runtime === "codex" ? ".agents" : ".claude", "spec_harness");
   const dest = path.join(destDir, "harness.config.json");
+  CONFIG_PATH = dest;
   const jaExiste = fs.existsSync(dest);
 
   if (jaExiste && !force) {
@@ -3055,6 +2316,16 @@ function cmdInitRepo(args: string[]): void {
     console.log("Detectando o perfil do repositório...");
     const d = detectaPerfil();
     const perfil = aplicaDeteccao(JSON.parse(fs.readFileSync(template, "utf-8")) as PerfilJson, d);
+    const implementer = (perfil.implementer as PerfilJson | undefined) ?? {};
+    implementer.runtime = runtime;
+    perfil.implementer = implementer;
+    if (runtime === "codex") {
+      const worktree = (perfil.worktree as PerfilJson | undefined) ?? {};
+      worktree.copy_paths = ((worktree.copy_paths as string[] | undefined) ?? []).filter(
+        (entry) => entry !== ".claude/settings.json"
+      );
+      perfil.worktree = worktree;
+    }
     fs.mkdirSync(destDir, { recursive: true });
     fs.writeFileSync(dest, JSON.stringify(perfil, null, 2) + "\n", "utf-8");
     console.log(`Config ${jaExiste ? "regerada" : "criada"}: ${path.relative(REPO_ROOT, dest)}`);
@@ -3062,15 +2333,11 @@ function cmdInitRepo(args: string[]): void {
     console.log(`  escopos: ${Object.keys(d.scopes).join(", ")}`);
     console.log(`  teste: ${d.test_command_template ?? "NÃO DETECTADO"}`);
     console.log(`  lint: ${d.lint ?? "nenhum"}`);
-    console.log(`  crap: ${d.crap.enabled ? "ligado" : "desligado"}`);
-    console.log(
-      d.cognitive_loop_dir
-        ? `  cognitive_loop: plugin encontrado em ${d.cognitive_loop_dir} (job não vem no template padrão — adicione-o de volta a post_verify.jobs se quiser usá-lo)`
-        : "  cognitive_loop: não faz parte do template padrão (ver SKILL.md § Revisão automática)"
-    );
   }
 
-  if (PLUGIN_ROOT && !args.includes("--hook")) {
+  if (runtime === "codex") {
+    console.log("Codex: sandbox workspace-write no worktree; o VERIFY valida os paths após cada fase.");
+  } else if (PLUGIN_ROOT && !args.includes("--hook")) {
     console.log(
       "Hook PreToolUse: fornecido pelo plugin (hooks/hooks.json) — nada a registrar neste repo. " +
         "Use --hook para registrar mesmo assim."
@@ -3199,7 +2466,7 @@ function diagnostico(): Problema[] {
   }
 
   const copyPaths = cfg.worktree?.copy_paths ?? [];
-  if (!copyPaths.includes(".claude/settings.json")) {
+  if (implementerRuntime() === "claude" && !copyPaths.includes(".claude/settings.json")) {
     if (PLUGIN_ROOT) {
       add("AVISO", "worktree.copy_paths", "sem '.claude/settings.json' — ok: o hook vem do plugin e vale em qualquer diretório, inclusive no worktree.");
     } else {
@@ -3211,7 +2478,10 @@ function diagnostico(): Problema[] {
   }
 
   const settingsPath = path.join(REPO_ROOT, ".claude", "settings.json");
-  if (PLUGIN_ROOT && !fs.existsSync(settingsPath)) {
+  if (implementerRuntime() === "codex") {
+    // Codex não consome hooks PreToolUse do Claude. O sandbox limita o worktree e VERIFY
+    // rejeita alterações fora das capabilities declaradas.
+  } else if (PLUGIN_ROOT && !fs.existsSync(settingsPath)) {
     // Hook do plugin vale em toda sessão; o repo não precisa declarar nada.
   } else if (!fs.existsSync(settingsPath)) {
     add("ERRO", "hook", `.claude/settings.json não existe — rode \`${CLI} init-repo\`.`);
@@ -3226,37 +2496,12 @@ function diagnostico(): Problema[] {
     }
   }
 
-  const crap = cfg.crap ?? {};
-  if (crap.enabled) {
-    const tool = crap.tool ? resolveEnginePath(crap.tool) : null;
-    if (!tool || !fs.existsSync(tool)) add("ERRO", "crap.tool", `ferramenta não encontrada: ${crap.tool ?? "(vazio)"}`);
-    const cov = crap.coverage_command ?? "";
-    for (const marca of ["{coverage_json}", "{test_targets}"]) {
-      if (!cov.includes(marca)) add("ERRO", "crap.coverage_command", `não contém ${marca}.`);
-    }
-    if ((crap.runtime ?? "node") === "python") {
-      if (!pythonImporta("radon")) add("ERRO", "crap", "`radon` não importável — instale-o ou desligue crap.enabled.");
-      if (!pythonImporta("pytest_cov")) add("ERRO", "crap", "`pytest-cov` não importável — instale-o ou desligue crap.enabled.");
-    } else {
-      if (!nodeModuloResolvivel("eslintcc")) {
-        add("ERRO", "crap", "`eslintcc` não resolvível — instale-o (devDependency) ou desligue crap.enabled.");
-      }
-    }
-  }
-
-  const pv = cfg.post_verify ?? {};
-  if (pv.enabled) {
-    if (!temBinario("claude")) add("ERRO", "post_verify", "CLI `claude` não está no PATH — os jobs de revisão não rodariam.");
-    for (const job of pv.jobs ?? []) {
-      if (!job.prompt) add("ERRO", `post_verify.${job.id}`, "job sem prompt.");
-      for (const d of [...(job.add_dirs ?? []), ...(job.plugin_dirs ?? [])]) {
-        if (!fs.existsSync(d)) add("ERRO", `post_verify.${job.id}`, `diretório declarado não existe: ${d}`);
-      }
-    }
-  }
-
   const impl = (cfg as { implementer?: { prompts?: Record<string, string>; reuse_session?: boolean } })
     .implementer;
+  const runtime = implementerRuntime();
+  if (!temBinario(runtime)) {
+    add("ERRO", "implementer.runtime", `binário '${runtime}' não está no PATH desta sessão.`);
+  }
   for (const fase of ["red", "green"]) {
     if (!impl?.prompts?.[fase]) add("ERRO", `implementer.prompts.${fase}`, "ausente — o autorun não teria o que mandar para a sessão da fase.");
   }
@@ -3332,8 +2577,6 @@ async function main(): Promise<void> {
     "merge-spec": cmdMergeSpec,
     "run-spec": cmdRunSpec,
     "run-parallel": cmdRunParallel,
-    "post-verify": cmdPostVerify,
-    "review-feature": cmdReviewFeature,
     "discard-spec-worktree": cmdDiscardSpecWorktree,
   };
 

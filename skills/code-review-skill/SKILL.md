@@ -129,6 +129,31 @@ For each file, check:
 
 > **Optional: over-engineering pass.** If the `ponytail:ponytail-review` skill is available (third-party plugin, not every setup has it installed), run it as an extra pass over the diff after the checks above. It's best-effort — if the skill isn't available, skip this and continue with just the Reuse check. Fold any findings it surfaces into the same PR comment (see [PR Review Template](assets/pr-review-template.md#simplification-ponytail-review-optional)) instead of posting a separate comment, and de-duplicate against anything the Reuse check already flagged. Ponytail findings have no severity of their own — map them to this skill's tiers: 🟢 `[nit]` by default, 🟡 `[important]` only if the over-engineering is a real maintainability risk (e.g. an unneeded dependency).
 
+### Optional: CRAP Risk Signal
+
+Use CRAP only as supporting evidence for changed production functions. It combines cyclomatic complexity and measured coverage:
+
+`CRAP = complexity² × (1 - coverage)³ + complexity`
+
+Run it only when the repository can generate a current coverage JSON report. Do not infer coverage, and report the result as inconclusive when the report or its dependencies are unavailable. A low score never proves correctness: a test without a meaningful assertion can lower it.
+
+1. Obtain coverage for the relevant test suite. Use the full scope suite rather than only tests added in the change.
+2. Write the changed production file paths, one per line, to a temporary file.
+3. Run the calculator for the project language:
+
+```bash
+# TypeScript/JavaScript: requires eslintcc and an Istanbul coverage-final.json report.
+node <skill-dir>/tools/crap_calculator.ts --coverage-json coverage/coverage-final.json --source-dir . --only-from /tmp/crap-files.txt --threshold 30 --json-out /tmp/crap.json
+
+# Python: requires radon and a coverage.py JSON report.
+python <skill-dir>/tools/crap_calculator.py --coverage-json coverage.json --source-dir . --only-from /tmp/crap-files.txt --threshold 30 --json-out /tmp/crap.json
+```
+
+4. Inspect functions above the threshold (30 by default) for excessive branching, untested paths, and missing meaningful assertions. Record the score, complexity, and coverage with the finding.
+5. Do not request superficial tests just to lower CRAP. A finding is justified only by an actual correctness, maintainability, or test-quality concern.
+
+The calculators are self-contained in this skill's `tools/` directory. They emit JSON with `high_risk_functions`; keep any report outside versioned source unless the repository explicitly requires review artifacts.
+
 ### Phase 4: Summary & Decision (2-3 minutes)
 
 1. Summarize key concerns

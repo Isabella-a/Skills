@@ -1,6 +1,6 @@
 ---
 name: spec-harness
-description: Executa specs Markdown produzidas pela skill SDD em qualquer repositório. Um packet unificado por spec, gerado a partir da própria spec, e um único comando (autorun) que encadeia RED→GREEN→VERIFY em subagentes sonnet sem devolver o controle entre as fases. O motor é global — instalado como plugin do Claude Code ou manualmente em ~/.claude/spec_harness — e o perfil (escopos, validadores, comando de teste) vem do .claude/spec_harness/harness.config.json do repo. Use depois que a pasta SDD da feature já existir (.specs/sdd-<feature>/).
+description: Executa specs Markdown produzidas pela skill SDD em qualquer repositório. Um packet unificado por spec e um único comando (autorun) encadeiam RED→GREEN→VERIFY em subagentes Codex CLI ou Claude Code sem devolver o controle entre as fases. O perfil vem de .agents/spec_harness/ (Codex) ou .claude/spec_harness/ (Claude). Use depois que a pasta SDD da feature já existir (.specs/sdd-<feature>/).
 allowed-tools: [Read, Glob, Grep, Bash, Write, Edit]
 ---
 
@@ -13,11 +13,25 @@ Markdown continua sendo a fonte da verdade.
 Se a pasta `.specs/sdd-<feature>/` ainda não existir, não improvise um packet: rode `/sdd`
 primeiro.
 
+## Runtime: Codex CLI ou Claude Code
+
+O motor (`spec_harness/harness.ts`) é um CLI Node comum. O `autorun` lê
+`implementer.runtime` no perfil: `codex` chama `codex exec` para RED/GREEN (padrão em instalações
+novas do Codex) e `claude` chama `claude -p` para perfis existentes do Claude Code. Ambos podem
+retomar a mesma sessão entre RED e GREEN.
+
+No Codex, cada sessão recebe sandbox `workspace-write` no worktree e o VERIFY rejeita qualquer
+arquivo fora das capabilities do packet. No Claude, o hook `PreToolUse` também bloqueia a escrita
+antes de ela ocorrer; por isso esse runtime mantém `.claude/settings.json` no worktree.
+
+No Claude Code, use a tool `Skill` para outras skills; no Codex CLI, leia e siga o respectivo
+`SKILL.md` instalado em `.agents/skills/`.
+
 ## `PROJECT_MAP.md` — leitura escopada, não o arquivo inteiro
 
 Se `PROJECT_MAP.md` existir na raiz do repositório, ele descreve stack, arquitetura, testes e
-convenções de código deste repositório, e é o que os prompts de RED/GREEN e o job `code_review`
-do pós-VERIFY vão cobrar. Mas ele é lido de novo em **cada fase de cada spec da feature** — ler
+convenções de código deste repositório, e é o que os prompts de RED/GREEN vão cobrar. Mas ele é
+lido de novo em **cada fase de cada spec da feature** — ler
 o arquivo inteiro todas essas vezes é o desperdício de token mais fácil de evitar aqui:
 
 1. Leia só a **Seção 0 (índice de leitura por escopo)** e a **Seção 1 (Identidade)** — algumas
@@ -80,14 +94,10 @@ dele) antes de qualquer teste ou lint; o harness herda o ambiente da sessão que
 
 ## Instalação num repositório — você faz, não o usuário
 
-O motor serve todos os repositórios a partir de uma instalação global — como plugin do Claude
-Code (`$CLAUDE_PLUGIN_ROOT/spec_harness/harness.ts`) ou instalado manualmente em
-`~/.claude/spec_harness/harness.ts`. Antes de rodar qualquer comando abaixo, resolva qual dos dois
-se aplica (teste se a variável de ambiente `CLAUDE_PLUGIN_ROOT` está definida) e use esse caminho —
-os exemplos abaixo chamam esse arquivo de `$HARNESS`. Do repo são só duas coisas, versionadas com
-ele: `.claude/spec_harness/harness.config.json` (o perfil) e o hook `PreToolUse` em
-`.claude/settings.json` (sem ele não há enforcement de path dentro dos worktrees — quando o motor
-está instalado como plugin, esse hook já vem do próprio plugin e não precisa ser registrado aqui).
+O motor serve todos os repositórios a partir de uma instalação global. O perfil fica em
+`.agents/spec_harness/harness.config.json` para Codex e em
+`.claude/spec_harness/harness.config.json` para Claude. Rode `init-repo` no runtime desejado:
+`node $HARNESS init-repo --codex` ou `node $HARNESS init-repo --claude`.
 
 Quando a skill for usada num repo que ainda não tem perfil, **conclua a instalação você mesmo**,
 neste loop:
@@ -99,20 +109,14 @@ node $HARNESS doctor        # --json para consumir a lista programaticamente
 
 `init-repo` **detecta** linguagem, extensões, marcadores de teste, comando de teste (lendo
 `pytest.ini`/`package.json`/`go.mod` — inclusive `--no-cov` quando o `addopts` já força cobertura),
-linter, escopos (subdiretórios do contêiner de domínios: `app/plataformas`, `src/modules`,
-`packages`…), `copy_paths` (`.env` que existir) e se a etapa de CRAP tem o que precisa. Node é o
-runtime padrão de CRAP (`eslintcc`); Python é a alternativa (`radon`/`pytest-cov`), ligada só se
-o repositório for detectado como Python. Para Node, `init-repo` prefere o comando de teste já
-confirmado em `PROJECT_MAP.md § Testes` (skill `project-map`) — sinal mais forte, porque veio de
-evidência real — e só cai para adivinhar por `vitest`/`jest`/`nyc` em `package.json` se
-`PROJECT_MAP.md` não existir ou não mencionar um runner conhecido. O que ele não infere vira
+ linter, escopos (subdiretórios do contêiner de domínios: `app/plataformas`, `src/modules`,
+`packages`…) e `copy_paths` (`.env` que existir). O que ele não infere vira
 `_pendencias` no próprio JSON, e o `doctor` trata cada pendência como **ERRO** — ou seja, sai com
 código 1 enquanto a configuração estiver incompleta.
 
 O `doctor` classifica: **ERRO** impede uma spec de rodar (escopo placeholder ou inexistente,
-`{test_paths}`/`{files}` ausentes, binário fora do PATH, hook não registrado, `crap` ligado sem
-`eslintcc` (Node, padrão) ou `radon` (Python, `crap.runtime: "python"`), prompt de fase faltando);
-**AVISO** apenas degrada (nenhum linter, `copy_paths` inexistente, CRAP desligado).
+`{test_paths}`/`{files}` ausentes, binário fora do PATH, hook não registrado ou prompt de fase
+faltando); **AVISO** apenas degrada (nenhum linter ou `copy_paths` inexistente).
 
 Seu trabalho é fechar os ERROs lendo o repositório — `CLAUDE.md`/`AGENTS.md`, `pyproject.toml`,
 `package.json`, `Makefile`, workflow de CI — e editando o JSON. O que quase sempre precisa de
@@ -126,7 +130,7 @@ julgamento seu:
 - **`validators`** — o lint que o repo já usa no CI, com `{files}`. Ligue `format`/`typecheck` só
   se a base sustentar como gate por fase; caso contrário `null`, e diga por quê num `_comment`.
 - **`worktree.copy_paths`** — o que os testes precisam e não é versionado (`.env`, credenciais de
-  teste). `.claude/settings.json` é obrigatório e já vem.
+  teste). No runtime Claude, inclua também `.claude/settings.json`; no Codex, não é necessário.
 
 Apague cada entrada de `_pendencias` que você resolver e repita o `doctor` até sair limpo. Só
 então rode o primeiro `scaffold-packet`.
@@ -141,8 +145,8 @@ node $HARNESS autorun .specs/sdd-<feature>/packets/SDD-NN.yaml --no-merge
 node $HARNESS merge-spec .specs/sdd-<feature>/packets/SDD-NN.yaml
 ~~~
 
-`autorun` roda **RED → GREEN → VERIFY numa invocação só**. RED e GREEN compartilham UMA sessão
-headless (sonnet) dentro do worktree da spec — GREEN retoma a sessão do RED, e cada nova
+`autorun` roda **RED → GREEN → VERIFY numa invocação só**. RED e GREEN compartilham uma sessão
+headless dentro do worktree da spec — GREEN retoma a sessão do RED, e cada nova
 tentativa retoma a anterior — em vez de abrir sessão fria por fase (`implementer.reuse_session`,
 ver `templates/harness.config.template.json`; desliga sozinho se o repo não tiver
 `implementer.prompts.retomada`). VERIFY não abre sessão nenhuma: só roda os validadores do
@@ -225,75 +229,9 @@ exato. Os caminhos possíveis:
   já pega a maioria desses casos antes do autorun (`scaffold.test_command_template`), mas um
   binário adicionado depois do último `doctor` escapa até a próxima checagem.
 
-## Revisão automática — por FEATURE, não por spec
+## Revisão de código
 
-A revisão automática **não roda a cada VERIFY**. Ela é cara (uma sessão sonnet completa, lendo
-diff+specs do zero) e repeti-la a cada spec era o maior custo de token repetido do `autorun`. Em
-vez disso, rode **uma vez por feature**, depois que todas as specs já estiverem mergeadas na
-branch de trabalho:
-
-~~~bash
-node $HARNESS review-feature <feature-slug> --base <ref-onde-a-feature-começou>
-~~~
-
-`--base` é obrigatório e explícito — o harness não adivinha onde a feature divergiu (ex.: a
-branch default do repo, ou o commit anterior à primeira spec). `--branch` (padrão: branch atual)
-e `--force` (ignora o marcador de já-executado) são opcionais.
-
-### CRAP — preparação da revisão, não gate do VERIFY
-
-Antes de abrir a sessão de revisão, `review-feature` roda CRAP (determinístico, sem modelo)
-**sobre o diff acumulado da feature** (`base...branch`), por escopo tocado: suíte de teste do
-escopo com relatório de cobertura, pontuando CRAP (`complexidade² × (1-cobertura)³ + complexidade`)
-só nas funções de PRODUÇÃO alteradas. Isso não é mais um gate mecânico do VERIFY — é insumo para
-a skill de code review, injetado no prompt como `{crap_top}`. Artefatos: `crap.json`/
-`crap-arquivos.txt` em `.specs/sdd-<feature>/reviews/feature/`.
-
-Gate `warn` por padrão (`crap.gate`, `crap.threshold`). Como isso roda **depois** de todas as
-specs já mergeadas, `crap.gate: "block"` não impede merge nenhum — só faz `review-feature` sair
-com exit 1, como sinal para quem orquestra. É sinal para a revisão, não alvo de otimização: CRAP
-cai igual com teste sem `assert`, então nenhum agente recebe "baixe o CRAP" como tarefa. Detalhes
-em `references/verify.md § CRAP`.
-
-`crap.runtime` escolhe a ferramenta, não a stack: `"node"` (**padrão**, `tools/crap_calculator.ts`,
-usa `eslintcc` — a regra `complexity` do próprio ESLint — sobre um relatório de cobertura
-Istanbul) ou `"python"` (`tools/crap_calculator.py`, usa `radon`+`pytest-cov`). `init-repo`
-escolhe sozinho ao detectar a linguagem; ambas produzem o mesmo shape de evidência.
-
-### Os jobs de revisão
-
-O template deste plugin vem com **um job** (`code_review`), que faz duas passadas na mesma
-sessão sobre o mesmo diff — evita abrir uma segunda sessão só para reler o que a primeira já leu:
-
-- **Passada 1** (skill `code-review-skill`) — revisão geral contra CLAUDE.md/AGENTS.md, bugs e o
-  sinal de CRAP.
-- **Passada 2** (`ponytail:ponytail-review`) — focada só em over-engineering (dependência
-  desnecessária, abstração especulativa, flexibilidade morta).
-
-**Atenção:** `code-review-skill` **não** é dependência deste plugin (`isabella`) — é uma
-skill de stack específico (ver README) que precisa estar instalada separadamente no ambiente que
-roda `review-feature`. Sem ela, troque a Passada 1 de volta para `mattpocock-skills:code-review`
-(genérica, essa sim dependência garantida do plugin) no `harness.config.json` do repositório.
-`ponytail` (Passada 2) continua sendo dependência garantida do plugin, instalada junto com ele.
-
-Artefatos em `.specs/sdd-<feature>/reviews/feature/`.
-
-O job `cognitive_loop` (explicador + micro-mundo interativo + quiz-trava) saiu do template
-padrão: é a sessão mais cara de todo o fluxo (repo-grounding integral + geração de artefato
-interativo), incondicional, e a maioria dos times não usa o resultado. Continua disponível como
-skill (`cognitive-loop:explain-diff`) para rodar manualmente quando quiser; para religar como job
-automático, adicione-o de volta a `post_verify.jobs` adaptando `{spec}`/`{num}` para `{feature}`.
-
-Roda **uma vez por head** da feature: o marcador `.post-verify.json` em `reviews/feature/`
-impede reexecução no mesmo `head_sha`; `--force` refaz. Como isso acontece **depois** de todas
-as specs já mergeadas, `post_verify.gate: "block"` não bloqueia merge nenhum — só faz
-`review-feature` sair com exit 1, como sinal para quem orquestra. `require_quiz_pass` fica sem
-efeito com o template padrão (nenhum job produz a trava do quiz).
-
-Para revisar **uma spec isolada** manualmente (fora do fluxo padrão, ex.: uma spec
-particularmente arriscada que você quer olhar antes das outras mergearem):
-`node $HARNESS post-verify .specs/sdd-<feature>/packets/.expanded/SDD-NN-verify.yaml` — usa os
-mesmos jobs, mas sobre o diff só dessa spec, em `reviews/<NN>/`.
+O spec-harness executa somente os gates mecânicos. Depois de concluir e antes do merge, rode a skill code-review-skill sobre o diff e a spec; ela inclui o sinal opcional de CRAP. O harness não cria relatórios nem inicia agentes de revisão.
 
 ## Ponytail-debt ao final da feature
 
@@ -332,10 +270,8 @@ Nada de stack está hardcoded no `harness.ts`. A config do repo declara `scopes`
 `source_extensions`, `test_markers` (o que conta como teste nos gates de RED/GREEN),
 `validators`, `worktree` (o que copiar para cada worktree — `.env` e `.claude/settings.json`, sem
 o qual o hook não roda lá dentro), `implementer` (modelo, tentativas e os prompts de RED e GREEN),
-`crap` (comando de cobertura, limiar, gate e alvos de teste por escopo) e `post_verify`.
-Caminhos de ferramenta na config (ex.: `crap.tool: tools/crap_calculator.py`) resolvem primeiro
-contra o motor global e só depois contra o repo — assim um repo pode sobrescrever uma ferramenta
-sem alterar o motor. `SPEC_HARNESS_CONFIG` aponta para outra config, útil para smoke tests.
+
+`SPEC_HARNESS_CONFIG` aponta para outra config, útil para smoke tests.
 
 Exemplo de critério para decidir um gate: se o type-checker ou o formatter do repositório acusa
 um volume grande de erros/divergências pré-existentes (dívida técnica alheia à spec) ou leva tempo
@@ -365,8 +301,6 @@ simultâneos.
   packets/
     SDD-NN.yaml                    # o único packet escrito/revisado por humano
     .expanded/                     # gerado: SDD-NN-{red,green,verify}.yaml + .evidence.json
-  reviews/feature/                 # revisão automática por feature (review-feature)
-  reviews/NN/                      # só se você rodou post-verify manual numa spec isolada
   feedback.md
 ~~~
 
