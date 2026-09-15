@@ -8,7 +8,7 @@
       "name": "isabella",
       "source": {
         "source": "local",
-        "path": "./plugins/isabella"
+        "path": "./.agents/plugins/plugins/isabella"
       },
       "policy": {
         "installation": "AVAILABLE",

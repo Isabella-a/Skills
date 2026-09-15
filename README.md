@@ -33,7 +33,7 @@ codex plugin marketplace add Isabella-a/Skills --ref main --sparse .agents/plugi
 codex plugin add isabella@isabella-a
 ```
 
-Para desenvolvimento local, use `codex plugin marketplace add .\.agents\plugins`. Após alterar
+Para desenvolvimento local, use `codex plugin marketplace add .`. Após alterar
 uma skill, rode `powershell -ExecutionPolicy Bypass -File scripts\sync-codex-plugin.ps1`, versione
 e publique as mudanças antes de qualquer outra pessoa instalar a versão atualizada.
 
