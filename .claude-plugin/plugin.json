@@ -1,7 +1,7 @@
 {
   "name": "isabella",
   "description": "Coleção de skills genéricas do Claude Code: project-map mapeia o repositório para dar contexto real às demais, referências de arquitetura (NestJS modular monolith, monorepos), boas práticas React/Next.js, e o fluxo sdd + spec-harness para quebrar entregas em specs testáveis e implementá-las com TDD e enforcement de path.",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "author": {
     "name": "Isabella Antunes",
     "url": "https://github.com/Isabella-a"
