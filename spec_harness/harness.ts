@@ -1743,6 +1743,21 @@ function blocoDeArquivosDeReferencia(packet: Packet): string {
   );
 }
 
+// `token_budget` do packet só era validado (presença dos campos), nunca comunicado à sessão —
+// um teto que existia no YAML mas em lugar nenhum que o modelo visse. Sem hook para truncar
+// Read/Grep, a única forma barata de fazer valer é dizer explicitamente.
+function blocoDeOrcamento(packet: Packet): string {
+  const b = packet.token_budget ?? {};
+  const partes: string[] = [];
+  if (b.max_initial_reads) partes.push(`no máximo ${b.max_initial_reads} leituras antes de agir`);
+  if (b.max_read_lines) {
+    partes.push(`no máximo ${b.max_read_lines} linhas por leitura — use offset/limit ou grep -n no trecho certo em vez do arquivo inteiro`);
+  }
+  if (b.max_search_results) partes.push(`no máximo ${b.max_search_results} resultados por busca`);
+  if (!partes.length) return "";
+  return "\n\nOrçamento de leitura desta fase: " + partes.join("; ") + ".";
+}
+
 // Settings mínimo passado com `--settings` quando o contexto enxuto está ligado.
 //
 // `--setting-sources project,local` descarta os settings de nível `user`, e com eles os plugins
@@ -1810,6 +1825,7 @@ function runImplementer(
     : interpolate(template, vars) +
       blocoDeArquivosDeReferencia(packet) +
       blocoDeDocsDaFase(phase) +
+      blocoDeOrcamento(packet) +
       BLOCO_FALHA_DE_AMBIENTE;
 
   const runtime = implementerRuntime();
@@ -1843,6 +1859,12 @@ function runImplementer(
       args.push("--strict-mcp-config", "--setting-sources", "project,local", "--settings", leanSettingsJson());
       if (cfg.system_prompt) args.push("--system-prompt", cfg.system_prompt);
     }
+    // Move cwd/env/git-status (que mudam a cada worktree de spec) do system prompt para a
+    // primeira mensagem — sem isso, cada spec nova invalida o cache do bloco estático do system
+    // prompt padrão do Claude Code só por rodar num worktree diferente. Sem efeito quando
+    // system_prompt é customizado (a própria flag documenta isso).
+    args.push("--exclude-dynamic-system-prompt-sections");
+    if (cfg.max_budget_usd) args.push("--max-budget-usd", String(cfg.max_budget_usd));
   }
 
   return new Promise((resolve) => {

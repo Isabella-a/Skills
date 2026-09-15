@@ -7,6 +7,8 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 
 ## [Não lançado]
 
+## [2.0.0] - 2026-09-15
+
 - Adiciona suporte ao [Codex CLI](https://developers.openai.com/codex) no mesmo formato aberto
   `SKILL.md` do Claude Code (`name`/`description`), inclusive com marketplace versionado em
   `.agents/plugins/`: qualquer pessoa pode instalar `isabella@isabella-a` diretamente do GitHub,
@@ -24,6 +26,18 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 - `spec-harness`: remove todo gate e execução automática de revisão/CRAP. A revisão é manual na
   skill `code-review-skill`, que passa a concentrar as calculadoras CRAP para TypeScript/JavaScript
   e Python.
+- `spec-harness`: mais três cortes de token no runtime `claude` do implementer:
+  - `token_budget` do packet (antes só validado, nunca comunicado à sessão) passa a ser injetado
+    como instrução explícita no prompt inicial da fase — a única forma barata de fazer valer sem
+    hook para truncar Read/Grep.
+  - `--exclude-dynamic-system-prompt-sections`, sempre ligada: move cwd/env/git-status (que mudam
+    a cada worktree de spec) do system prompt para a primeira mensagem, permitindo que o bloco
+    estático do system prompt padrão do Claude Code cacheie entre specs diferentes em vez de
+    invalidar a cada worktree novo.
+  - `implementer.max_budget_usd` (opcional, desligado por padrão): passa `--max-budget-usd` como
+    freio de emergência por invocação contra uma sessão presa em loop sem convergir.
+  - `allowed_tools` do template não inclui mais `TodoWrite`: o orquestrador nunca lê a lista de
+    todos de uma sessão headless, então cada chamada era turno pago sem efeito em gate ou revisão.
 
 - Renomeia o plugin de `claude-skills` para `isabella` (`.claude-plugin/plugin.json` e
   `marketplace.json`) — o prefixo de invocação das skills passa a ser `isabella:sdd` etc. Quem já
