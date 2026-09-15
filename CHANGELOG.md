@@ -7,6 +7,15 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 
 ## [Não lançado]
 
+## [2.0.2] - 2026-09-15
+
+- `spec-harness`: a seção "Ponytail-debt ao final da feature" deixa de assumir que o GREEN sempre
+  deixa comentários `ponytail:` para colher. `implementer.lean_context` (padrão ligado) sobe a
+  sessão do implementador com `--setting-sources project,local`, excluindo plugins em escopo
+  `user` — onde o `ponytail` normalmente vive. A seção agora documenta a pré-condição (habilitar o
+  `ponytail` em escopo `project`/`local`, ou desligar `lean_context`) e avisa que `ponytail-debt`
+  varre o repositório inteiro, não só o diff da feature.
+
 ## [2.0.1] - 2026-09-15
 
 - `code-review-skill`: deixa de ser específica do stack do One Portal e passa a se ancorar no
