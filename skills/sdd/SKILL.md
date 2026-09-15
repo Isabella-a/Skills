@@ -61,6 +61,22 @@ antes de executar a fase. Os caminhos são relativos a este diretório de skill.
 
 ---
 
+## Runtime: Claude Code, Codex CLI ou outro
+
+Esta skill assume um agente de codificação com leitura de arquivo, busca, shell e edição — não é
+exclusiva do Claude Code. Duas convenções mudam de sintaxe conforme o runtime, sem mudar de efeito:
+
+- **Chamar outra skill** (ex.: `Skill(skill: "project-map")`, usado na Fase 0): no Claude Code,
+  use a tool `Skill`. Em outro runtime com skills no formato SKILL.md (ex.: Codex CLI), leia e
+  siga `.agents/skills/<nome>/SKILL.md` diretamente.
+- **Delegar a um subagente** (`Agent(...)`, usado nas Fases 2-4): no Claude Code, use a tool
+  `Agent`/`Task`. No Codex CLI, use `spawn_agent`/`wait_agent`. Sem essa primitiva, faça a
+  exploração você mesmo, sequencialmente, em vez de pular a etapa.
+- **Skills externas de outro plugin** (`grilling`, referenciada na Fase 1): é um plugin do
+  Claude Code (`mattpocock-skills`), sem garantia de existir fora dele. Se não existir no seu
+  runtime, conduza a entrevista de grilling você mesmo (várias rodadas de perguntas até a ideia
+  estar afiada) em vez de pular a Fase 1.
+
 ## Regras globais
 
 1. **Não pule fases.** Cada fase alimenta a seguinte — pular produz specs com contratos

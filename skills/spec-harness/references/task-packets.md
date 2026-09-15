@@ -66,7 +66,7 @@ unificado. Esses arquivos são gerados: editar um deles é trabalho perdido no p
 |---|---|---|---|
 | escreve | `test_paths` | `impl_paths` | nada |
 | lê | spec + `context_paths` + testes + produção (igual nas três) | idem | idem |
-| validação | `test_command` **falhando** pelo motivo declarado | `test_command` passando + `ruff check` | `test_command` + `ruff check` + revisão automática |
+| validação | `test_command` **falhando** pelo motivo declarado | `test_command` passando + `ruff check` | `test_command` + `ruff check` + revisão manual |
 | sessão de modelo | sim (abre a sessão) | sim (retoma a do RED) | não |
 
 O gate de RED recusa escrita em produção e o de GREEN recusa escrita em teste — pelos

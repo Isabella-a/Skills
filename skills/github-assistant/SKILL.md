@@ -211,10 +211,10 @@ do domínio, sugestões que quebram o comportamento esperado.
 - **Se o comentário procede:** aplique a correção (passos 4–5).
 
 **4. Valide** — rode lint + type-check (e os testes e2e impactados, quando a mudança tocar
-lógica) antes de commitar. Veja o `CLAUDE.md` do app para os comandos.
+lógica) antes de commitar. Veja o `CLAUDE.md`/`AGENTS.md` do app para os comandos.
 
 **5. Commite e faça push** na branch do PR (Conventional Commits; **sem `Co-Authored-By`** —
-ver `/CLAUDE.md`). Agrupe um fix por commit quando os achados forem independentes.
+ver `/CLAUDE.md`/`/AGENTS.md`). Agrupe um fix por commit quando os achados forem independentes.
 
 **6. Responda cada comentário** (use o `id` do passo 1):
 
@@ -350,7 +350,7 @@ do app afetado → ache os módulos que a usam → rode só os `*.e2e-spec.ts` (
 #### 5.6 Segurança
 
 - **Confirme com o usuário antes de fechar/mergear** qualquer PR.
-- **Sem `--no-verify`** e **sem `Co-Authored-By` do modelo** nos commits (ver `/CLAUDE.md`).
+- **Sem `--no-verify`** e **sem `Co-Authored-By` do modelo** nos commits (ver `/CLAUDE.md`/`/AGENTS.md`).
 - **Não mergeie com e2e vermelho.**
 
 ---
@@ -437,7 +437,7 @@ do app afetado → ache os módulos que a usam → rode só os `*.e2e-spec.ts` (
 ### ⚠️ Atenção
 
 - **Nunca commite com `Co-Authored-By` do modelo** nem trailers "Generated with…" (ver
-  `/CLAUDE.md`). Commits atribuídos só ao autor humano.
+  `/CLAUDE.md`/`/AGENTS.md`). Commits atribuídos só ao autor humano.
 - **Contestar achado do bot Gemini:** responda começando o corpo com **`/gemini`** para acionar
   uma réplica e discutir até consenso — não ignore o comentário em silêncio.
 

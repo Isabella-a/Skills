@@ -7,7 +7,7 @@
  *
  * Porta de tools/crap_calculator.py: mesma fórmula, mesmos flags de CLI e o mesmo shape de
  * saída (total_functions/average_crap/high_risk_functions/fallback_functions), para
- * harness.ts consumir sem diferenciar stack (ver crapTopText/readCrapReport).
+ * a skill de code review consumir sem depender da stack analisada.
  *
  * Requer, no repositório ALVO (não neste motor) — como `radon`/`pytest-cov` são do repo Python,
  * não do harness:
