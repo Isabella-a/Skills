@@ -19,15 +19,16 @@ aplicável), o shape do contrato (Fase 3) e a investigação do repositório (Fa
 4. **Reutilização:** a Fase 4 encontrou algo que já cobre parte desta entrega? Apresente ao
    usuário antes de propor código novo — cada reuso é uma spec que não precisa existir.
 5. **Lista de specs — apresente, não pergunte em aberto:** derive você mesmo a divisão em
-   `specs/`, sem pedir ao usuário para adivinhar. Aplique a regra de granularidade (mesma usada
-   na Fase 6, `fases/fase6_geracao.md#regra-de-granularidade-das-specs`):
+   `specs/`, sem pedir ao usuário para adivinhar. Priorize menos specs, maiores. Aplique a regra
+   de granularidade (mesma usada na Fase 6, `fases/fase6_geracao.md#regra-de-granularidade-das-specs`):
    - testável de forma independente, sem depender de outra spec para rodar seus testes (exceto
-     dependência declarada explicitamente);
-   - nunca backend e frontend na mesma spec — quebre por lado, contrato/endpoint antes do
-     consumo na tela;
-   - agrupe por entidade/módulo backend (ex.: todo o CRUD de uma entidade numa spec só) ou por
-     área de feature frontend (ex.: todas as telas dessa área numa spec só); quebre em specs
-     separadas apenas ao cruzar entidade/módulo ou área diferente.
+     dependência explicitamente declarada);
+   - entrega com frontend → um par acoplado (spec de backend + spec de frontend com `Depende
+     de` a primeira), numeradas em sequência e tratadas como uma entrega vertical só — a
+     funcionalidade fica pequena, mas de ponta a ponta e testável na tela ao final do par;
+   - entrega sem frontend → agrupe por entidade/módulo (ex.: todo o CRUD de uma entidade numa
+     spec só); quebre em specs (ou pares) separados apenas ao cruzar entidade/módulo ou área de
+     feature diferente, nunca pelo tamanho isolado de um caso de uso.
 
    Construa a lista cruzando: os contratos reais da Fase 3 (cada entidade/DTO/endpoint novo
    costuma virar uma spec), os módulos/telas de referência da Fase 2.2 (o que já existe não

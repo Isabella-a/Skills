@@ -64,21 +64,30 @@ Para cada spec validada na Fase 5:
 
 ## Regra de granularidade das specs
 
-Cada spec deve ser uma implementação testável de forma independente, agrupada por
-entidade/módulo (backend) ou área de feature (frontend) — não pelo menor use-case/tela
-possível:
-- Pode ser implementada e testada sem depender do código de outra spec (exceto se dependência
-  declarada explicitamente)
-- Se uma spec depende de outra para rodar os testes, ela é grande demais — quebre-a
-- Uma spec cobrindo backend E frontend ao mesmo tempo é grande demais — quebre por lado
-  (contrato/endpoint primeiro, consumo na tela depois). Essa regra não afrouxa: o
-  `spec-harness` e o `CLAUDE.md` raiz exigem que cada mudança fique escopada a um app só (CI
-  separado por `paths:`)
-- Uma spec pode cobrir todos os use-cases backend de uma mesma entidade/módulo (ex.: CRUD
-  inteiro — criar, listar, atualizar, remover), ou todas as telas de uma mesma área de feature
-  frontend, desde que continuem testáveis sem depender do código de outra spec
-- Quebre em specs separadas só quando cruzar entidade/módulo (backend) ou área de feature
-  (frontend) diferente
+Objetivo: menos specs, maiores, agrupadas por entrega — não pelo menor use-case/tela possível.
+Quanto maior a spec sem quebrar a regra abaixo, melhor.
+
+- Cada spec continua testável de forma independente, sem depender do código de outra spec
+  (exceto dependência declarada explicitamente em `Depende de`). Isso não afrouxa: é o que o
+  `spec-harness` exige mecanicamente — um escopo por packet, hook `PreToolUse` bloqueia
+  leitura/escrita fora dos paths declarados
+- **Entrega envolve frontend → gere um par acoplado**, não uma spec por camada solta:
+  1. `NN-<nome>-backend.md` — contrato/endpoint/persistência necessários
+  2. `NN+1-<nome>-frontend.md` — consumo na tela, com `Depende de: NN`
+  Numere as duas em sequência, uma logo após a outra (nunca intercaladas com specs de outra
+  entrega), e trate-as como **uma entrega vertical só** em `implementacao.md`/`progresso.md`
+  (campo `Entrega vertical` no cabeçalho de cada uma, ver `templates/spec.md`). O par entrega
+  uma funcionalidade pequena mas de ponta a ponta: a entrega só está concluída quando a spec de
+  frontend passa **e** dá pra testar na tela (ver seção "Verificação Manual na Tela" do
+  template). Escopo backend e escopo frontend continuam em arquivos `.md` separados porque são
+  escopos diferentes no `harness.config.json` — o packet não atravessa isso — mas o **tamanho**
+  de cada lado deve ser o máximo que ainda cabe num escopo só (não fatie o backend em
+  contrato/persistência/exposição se as três cabem numa spec testável junto)
+- **Entrega sem frontend** (backend puro, CLI, job, pipeline): agrupe todos os use-cases da
+  mesma entidade/módulo numa spec só (ex.: CRUD inteiro — criar, listar, atualizar, remover — é
+  uma spec, não quatro), desde que continue testável sem depender de outra spec
+- Quebre em specs (ou pares) separados só quando cruzar entidade/módulo (backend) ou área de
+  feature (frontend) diferente — nunca pelo tamanho isolado de um RF ou de uma tela
 
 ---
 

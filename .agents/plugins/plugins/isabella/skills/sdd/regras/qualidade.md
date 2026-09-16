@@ -14,7 +14,7 @@ transação, tipagem, níveis de teste obrigatórios) sai de `PROJECT_MAP.md` e 
 | Regra | O que verificar |
 |-------|----------------|
 | **Menor implementação testável** | A spec pode ser implementada e testada sem depender do código de outra spec (salvo dependência declarada em "Depende de") |
-| **Um escopo por spec** | A spec toca um único escopo do `spec-harness`. Mudança que atravessa fronteiras é mais de uma spec |
+| **Um escopo por spec** | A spec toca um único escopo do `spec-harness`. Mudança que atravessa fronteiras é mais de uma spec — se a entrega tem front, isso vira um par backend+frontend, não uma spec por RF (ver `fases/fase6_geracao.md#regra-de-granularidade-das-specs`) |
 | **Comportamento, não implementação** | A spec descreve o QUÊ, não o COMO. "Deve rejeitar com conflito quando X" — não "use a função Y para..." |
 | **Prontidão para implementação sem diálogo** | Um desenvolvedor ou agente consegue implementar sem fazer nenhuma pergunta |
 | **Ambiguidade zero** | Toda incerteza marcada com `⚠️ ABERTO:` e listada nas Open Questions — o `spec-harness` recusa spec com marcador pendente |
