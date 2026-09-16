@@ -7,6 +7,16 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 
 ## [Não lançado]
 
+- Adiciona a skill `qa-tester`: gera documentação de QA manual (checklist + prints) para uma
+  funcionalidade ou uma ou mais specs SDD combinadas, executando os cenários (caminho feliz +
+  edge cases) e reportando bugs (esperado vs obtido, com print e erros de console). Acessa a
+  tela real em ordem de preferência: `claude-in-chrome` (sessão já logada do usuário, CSS/dados
+  reais, sem setup), Playwright (com credencial de teste reutilizável) ou, como último recurso,
+  o harness de componente do próprio repositório (Vitest browser mode/Storybook), com ressalva
+  de fidelidade visual quando esse fallback é usado. Avisa o usuário logo no início para deixar a
+  aplicação rodando e logada, ou fornecer credencial, antes de prosseguir. Quando a entrada é uma
+  spec SDD, prioriza a seção "Verificação Manual na Tela" (introduzida na mudança de granularidade
+  do `sdd` abaixo). Não substitui teste automatizado nem abre ticket de bug sozinha.
 - `sdd`: reestrutura a granularidade das specs para gerar menos specs, maiores. Entrega com
   frontend passa a gerar um **par acoplado** (spec de backend + spec de frontend com `Depende
   de`), numeradas em sequência e tratadas como uma única entrega vertical em
