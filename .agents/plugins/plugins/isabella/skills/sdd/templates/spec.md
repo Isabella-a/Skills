@@ -5,6 +5,7 @@
 **Data:** <hoje>
 **Escopo:** <escopo do `spec-harness` que esta spec toca — uma spec toca UM escopo>
 **Depende de:** [spec anterior ou "Nenhuma"]
+**Entrega vertical:** [nome curto da entrega, igual nas duas specs do par backend+frontend | "Autônoma" se não fizer parte de um par]
 
 ---
 
@@ -74,6 +75,15 @@ um bullet por arquivo.
 **Fluxo Alternativo A — [Nome]:**
 1. [Passo divergente]
 2. [Comportamento específico]
+
+### Verificação Manual na Tela
+
+> Só nesta seção se esta spec for a metade "frontend" de uma entrega vertical (ver
+> `Entrega vertical` no cabeçalho). É o critério de "pronto" que fecha o par: passos curtos que
+> uma pessoa executa no navegador para ver a funcionalidade funcionando de ponta a ponta.
+
+1. [Ação no navegador — ex.: abrir a tela X, clicar em Y]
+2. [O que deve aparecer/mudar na tela]
 
 ---
 

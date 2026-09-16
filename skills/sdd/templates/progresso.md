@@ -10,13 +10,14 @@
 
 ## Status Geral
 
-| Spec | Status | Observações |
-|------|--------|--------------|
-| 01-[nome] | 🔴 Não iniciado | — |
-| 02-[nome] | 🔴 Não iniciado | — |
-| 03-[nome] | 🔴 Não iniciado | — |
+| Spec | Status | Entrega vertical | Observações |
+|------|--------|-------------------|--------------|
+| 01-[nome-backend] | 🔴 Não iniciado | [nome da entrega] | — |
+| 02-[nome-frontend] | 🔴 Não iniciado | [nome da entrega] | Fecha só com verificação manual na tela |
+| 03-[nome] | 🔴 Não iniciado | Autônoma | — |
 
 > Legendas: 🔴 Não iniciado · 🟡 Em progresso · 🟢 Concluído · ❌ Bloqueado
+> Uma entrega vertical (par backend+frontend) só fica 🟢 quando as duas specs do par estão 🟢.
 
 ---
 

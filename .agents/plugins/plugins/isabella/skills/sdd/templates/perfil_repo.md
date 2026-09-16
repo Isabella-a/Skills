@@ -13,8 +13,9 @@ testes" ou "um endpoint com validação + persistência" ou "uma task do DAG com
 
 - **Isto é uma spec:** <exemplo real e pequeno, tirado do repo>
 - **Isto é grande demais** (vira duas ou mais): <exemplo real>
-- **Ordem típica entre specs (se full-stack):** <ex.: contrato → persistência → exposição HTTP →
-  consumo na tela>
+- **Ordem típica entre specs (se full-stack):** par acoplado — <ex.: backend (contrato +
+  persistência + exposição HTTP juntos numa spec só) → frontend (consumo na tela, spec seguinte,
+  `Depende de` a de backend, fecha com verificação manual na tela)>
 
 ## Em aberto
 

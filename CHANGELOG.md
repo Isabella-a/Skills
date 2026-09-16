@@ -7,6 +7,16 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 
 ## [Não lançado]
 
+- `sdd`: reestrutura a granularidade das specs para gerar menos specs, maiores. Entrega com
+  frontend passa a gerar um **par acoplado** (spec de backend + spec de frontend com `Depende
+  de`), numeradas em sequência e tratadas como uma única entrega vertical em
+  `implementacao.md`/`progresso.md` — a entrega só fecha quando a spec de frontend passa e a
+  nova seção "Verificação Manual na Tela" (no template de spec) é confirmada. Entrega sem
+  frontend agrupa todos os use-cases da mesma entidade/módulo numa spec só (ex.: CRUD inteiro),
+  em vez de uma spec por caso de uso. O enforcement de "um escopo por spec" do `spec-harness`
+  (hook `PreToolUse` por packet) não muda — o par continua em dois arquivos porque são dois
+  escopos técnicos distintos.
+
 ## [2.1.0] - 2026-09-16
 
 - Adiciona a skill `spec-orchestrator`: implementa todas as specs de uma feature SDD
