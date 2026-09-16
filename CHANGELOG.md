@@ -7,6 +7,19 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 
 ## [Não lançado]
 
+## [2.1.0] - 2026-09-16
+
+- Adiciona a skill `spec-orchestrator`: implementa todas as specs de uma feature SDD
+  (`.specs/sdd-<feature>/`) direto da spec Markdown, sem motor de packet/evidence.json — um
+  subagente lean por spec escreve teste (RED) e código (GREEN) na mesma sessão, isolado por
+  `git worktree`, em paralelo quando specs não dependem entre si (via a coluna "Depende de" de
+  `implementacao.md`) e em sequência quando dependem. Antes do merge rodam checagens mecânicas
+  via Bash/grep (escopo, lint, contrato, cobertura de requisito) sem custar token de LLM, com uma
+  correção enviada de volta ao mesmo subagente (`SendMessage`, não um agente novo) antes de marcar
+  bloqueio. Existe para os casos em que o enforcement em tempo real do `spec-harness` (packet YAML,
+  hook de path, `evidence.json`) custa caro demais em token; não invoca o `spec-harness` sozinha —
+  esse fluxo só roda se o usuário digitar `/spec-harness` explicitamente.
+
 ## [2.0.2] - 2026-09-15
 
 - `spec-harness`: a seção "Ponytail-debt ao final da feature" deixa de assumir que o GREEN sempre
