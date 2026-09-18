@@ -142,6 +142,8 @@ repositório em vez de inventar um.
 | Skill | O que faz | Como acionar |
 |---|---|---|
 | [`project-map`](skills/project-map) | Mapeia o repositório (linguagens, bibliotecas, arquitetura, estilos/CSS global, testes, CI/deploy, segurança, observabilidade) e gera `PROJECT_MAP.md` na raiz — a base de contexto que as demais skills leem antes de agir. | Peça "mapeia esse projeto" ou "gera o PROJECT_MAP.md". As outras skills também oferecem rodá-la sozinhas quando notam que falta. |
+| [`knowledge-bootstrap`](skills/knowledge-bootstrap) | Varre o repositório uma vez para criar `docs/knowledge/` — o índice único (`INDEX.md`) e as regras de negócio por domínio (`domains/*.md`), amarrado ao vocabulário/ADRs que a skill `domain-modeling` já mantém (`CONTEXT.md`/`docs/adr/`), sem duplicar essa convenção. Usa `mattpocock-skills:grilling` para fechar lacunas de "porquê" que o código não responde sozinho. | Peça "cria a base de conhecimento do projeto" ou "gera o glossário do projeto". Roda uma vez por repositório. |
+| [`knowledge-sync`](skills/knowledge-sync) | Mantém a base de conhecimento atualizada a cada spec implementada ou branch/PR mergeada — captura regra de negócio (`domains/*.md`), vocabulário (`CONTEXT.md`) e decisão técnica (`docs/adr/`) antes que a spec seja apagada, sem sessão de grilling (só perguntas pontuais, no máximo 4). | Peça "documenta essa spec antes de apagar" ou "atualiza a base de conhecimento com essa feature". Depende de `knowledge-bootstrap` já ter rodado. |
 | [`react-best-practices`](skills/react-best-practices) | Boas práticas de performance para React/Next.js (Vercel Engineering) — data fetching, bundle, renderização. | Ativa ao escrever, revisar ou refatorar componentes React/Next.js. |
 | [`sdd`](skills/sdd) | Quebra uma entrega em specs construíveis — documentos de Spec-Driven Design, um por unidade testável, antes de qualquer código. | `/sdd <descrição da feature>`, `/sdd ABC-1234` (busca o ticket antes) ou peça "escreve um spec para X". |
 | [`spec-harness`](skills/spec-harness) | Implementa cada spec gerada pela `sdd` em RED→GREEN→VERIFY, num git worktree isolado, com enforcement de path. | Automática, depois que a pasta `.specs/sdd-<feature>/` já existir. |
@@ -164,6 +166,47 @@ O documento abre com uma **Seção 0 — índice de leitura por escopo** (progre
 uma tabela fixa que diz, por tipo de tarefa, quais seções são relevantes. `sdd` e `spec-harness`
 leem essa seção primeiro e depois só as seções que o escopo da spec exige — nunca o arquivo
 inteiro a cada fase/spec, que é o padrão de leitura mais caro do fluxo `sdd`/`spec-harness`.
+
+### `knowledge-bootstrap` + `knowledge-sync` em detalhe
+
+Par de skills para uma base de conhecimento que sobrevive à prática de apagar specs SDD depois
+de mergeadas — sem isso, regra de negócio e decisão técnica documentadas só na spec somem junto
+com a pasta. **Não reinventam vocabulário/ADR** — usam a convenção que a skill `domain-modeling`
+(`mattpocock-skills`) já estabelece (`CONTEXT.md`/`CONTEXT-MAP.md`, `docs/adr/`, critério de 3
+testes pra saber se uma decisão vale um ADR) e que outras skills do toolkit (`tdd`, `triage`) já
+leem como hábito. O par cobre só o que essa convenção deixa de fora, de propósito:
+
+1. **Regra de negócio** — `domain-modeling` é explícito que `CONTEXT.md` não é "spec, nem
+   repositório de decisão de implementação", só vocabulário. Uma regra como "receita fora da
+   competência aberta precisa de aprovação do financeiro" não é termo nem decisão técnica com
+   trade-off — é regra de negócio, e não tinha lugar documentado antes. `docs/knowledge/domains/*.md`
+   é esse lugar.
+2. **Índice único navegável por palavra-chave** — `CONTEXT-MAP.md` lista contextos e suas
+   relações, mas não é um roteador para "onde eu leio X sem abrir o resto"; não tem coluna de
+   palavras-chave nem amarra vocabulário + ADR + regra de negócio num lugar só.
+   `docs/knowledge/INDEX.md` é esse roteador — a única leitura obrigatória.
+3. **O momento de captura antes da spec sumir** — nada dispara `domain-modeling` quando uma spec
+   está prestes a ser apagada; é uma skill para sessão de design ao vivo, não um gatilho de fim de
+   entrega. `knowledge-sync` é esse gatilho.
+
+Se essas lacunas forem cobertas nativamente por `domain-modeling`/`grill-with-docs` algum dia,
+este par deveria encolher — não existe para durar por si só.
+
+- **Diferença para `PROJECT_MAP.md`:** `PROJECT_MAP.md` é "como o repositório é construído"
+  (stack, camadas, convenções — evidência do código, muda pouco). A base de conhecimento é "o que
+  o sistema faz e por quê" (regras de negócio, decisões com trade-off, vocabulário — cresce a
+  cada feature). As duas convivem hoje; a ideia declarada é a base absorver o papel do
+  `PROJECT_MAP.md` também, com o tempo.
+- **`knowledge-bootstrap`** roda uma vez por repositório: varre código, `CLAUDE.md`/`AGENTS.md`,
+  `PROJECT_MAP.md`, `CONTEXT.md`/`docs/adr/` e ADRs em formato antigo (listados como histórico,
+  não migrados) e specs SDD ainda vivas, identifica domínios/bounded-contexts e, para o que não
+  dá pra confirmar por evidência, chama `mattpocock-skills:grilling` — a única etapa do par que
+  interrompe o fluxo para uma entrevista mais longa.
+- **`knowledge-sync`** roda depois, a cada entrega: recebe uma spec SDD (antes dela ser apagada)
+  ou uma branch/PR, cruza spec com o diff real (specs descrevem plano, o código é o que shippou),
+  extrai só o que é durável e grava cada coisa na convenção certa (regra →
+  `docs/knowledge/domains/`, termo → `CONTEXT.md`, decisão → `docs/adr/`). No máximo 4 perguntas
+  pontuais via `AskUserQuestion`, nunca uma sessão de grilling.
 
 ### `sdd` + `spec-harness` em detalhe
 
