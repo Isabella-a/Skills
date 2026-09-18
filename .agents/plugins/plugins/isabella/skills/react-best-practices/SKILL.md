@@ -19,7 +19,8 @@ Check for `PROJECT_MAP.md` at the repo root before applying rules below:
   fetching library, styling methodology, component library already in use — and adapt examples
   to match instead of suggesting something the repo doesn't use (e.g. don't recommend Tailwind
   classes in a CSS Modules project).
-- **Missing:** ask the user if they want to generate it first (`Skill(skill: "project-map")`) —
+- **Missing:** ask the user if they want to generate it first by invoking `project-map` when it
+  is available (or reading its `SKILL.md` directly) —
   otherwise proceed with generic advice below.
 
 ## When to Apply

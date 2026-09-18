@@ -1,11 +1,11 @@
 ---
 name: qa-tester
-description: Gera documentação de QA manual para uma funcionalidade ou uma spec SDD — abre a tela real da aplicação (via Playwright, ou via `claude-in-chrome` quando a tela exige uma sessão logada que só o usuário tem), executa os cenários (caminho feliz + edge cases), tira prints de cada estado relevante e reporta bugs (esperado vs obtido, com print e erros de console). A saída é um relatório em Markdown com checklist de teste manual e prints embutidos, pronto para um colega testar sem precisar ler código. Use quando o usuário pedir "documentação de QA", "gera um checklist de teste manual", "testa essa spec na tela", "roda um teste visual com Playwright", "reporta os bugs dessa funcionalidade" ou passar uma spec de `.specs/sdd-<feature>/specs/` pra validar visualmente. Aceita descrição livre de funcionalidade OU caminho de uma spec SDD — nesse caso lê a seção "Verificação Manual na Tela" da spec, se existir. Não substitui teste automatizado (isso é `spec-harness`/`spec-orchestrator`) nem abre ticket de bug sozinha — cobre a lacuna entre "os testes passam" e "um humano confirmou que funciona na tela".
+description: Gera documentação de QA manual para uma funcionalidade ou spec SDD. Testa a tela real com a sessão logada do usuário quando o ambiente oferecer controle de navegador (Claude in Chrome ou navegador conectado do ChatGPT/Codex); caso contrário usa Playwright. Executa fluxos, registra evidências visuais, erros de console e bugs em relatório Markdown. Use para documentação de QA, checklist manual, teste visual ou validação de tela de uma spec. Não substitui testes automatizados nem abre tickets.
 argument-hint: <descrição da funcionalidade | caminho de 1+ specs .specs/sdd-<feature>/specs/NN-*.md>
 allowed-tools: [Read, Glob, Grep, Bash, Write, AskUserQuestion, Skill]
 ---
 
-# QA Manual com Playwright
+# QA Manual no Navegador
 
 Ponte entre "os testes automatizados passam" e "alguém clicou e confirmou que funciona": abre a
 tela de verdade, executa os cenários, tira print de cada estado relevante e escreve um relatório
@@ -24,7 +24,8 @@ O usuário invocou com: **$ARGUMENTS**
 ## Pré-requisito
 
 `PROJECT_MAP.md` precisa existir na raiz do repositório — se não existir, rode a skill
-`project-map` antes de continuar (`Skill(skill: "project-map")`). Dele você usa:
+`project-map` antes de continuar. Invoque a skill quando ela estiver disponível; caso contrário,
+leia suas instruções diretamente. Dele você usa:
 
 - **§7 Ambiente local e execução** — comando de start, URL local, serviços que precisam estar de
   pé, variáveis de ambiente.
@@ -41,7 +42,7 @@ Dois modos de entrada, conforme `$ARGUMENTS`:
 arquivo(s) inteiro(s). Specs geradas antes da mudança de granularidade do `sdd` (uma por
 caso de uso/tela, em vez de agrupadas) costumam precisar ser combinadas: se o usuário passar
 mais de uma spec, ou se várias specs do mesmo `implementacao.md` tocam a mesma tela, trate-as
-como **um cenário de teste só** — um relatório, uma passagem pelo Playwright, cenários de todas
+como **um cenário de teste só** — um relatório, uma única passagem de QA no navegador, cenários de todas
 elas juntos (é o que a tela entrega de verdade, ponta a ponta). Monte os cenários nesta ordem de
 prioridade, por spec:
 
@@ -57,7 +58,7 @@ prioridade, por spec:
 feliz e um edge case plausível (input inválido, estado vazio, sem permissão), mesmo critério de
 qualidade do `sdd` (`regras/qualidade.md`): **nunca invente o resultado esperado**. Se a descrição
 não disser o que deve acontecer num cenário (ex.: "o que aparece se o campo X estiver vazio?"),
-pergunte via `AskUserQuestion` antes de rodar — um cenário com resultado esperado inventado
+pergunte ao usuário antes de rodar — um cenário com resultado esperado inventado
 invalida o relatório inteiro.
 
 ---
@@ -67,12 +68,13 @@ invalida o relatório inteiro.
 Confirme se a aplicação já responde na URL de `PROJECT_MAP.md § Ambiente local e execução`. Se a
 tela exigir login ou dado que você não tem como reproduzir sozinho (auth de nuvem tipo Cognito/
 Auth0, banco sem seed, permissão específica), **não tente adivinhar nem subir tudo por conta
-própria** — pergunte ao usuário (`AskUserQuestion`) qual das três vias abaixo está disponível,
+própria** — pergunte ao usuário qual das três vias abaixo está disponível,
 nesta ordem de preferência (a primeira que der já é fidelidade máxima, sem setup):
 
 1. **Sessão real do usuário, já logada** — ele deixa a aplicação rodando e logada no próprio
-   Chrome e te passa a URL. Vá para o **Passo 3a** (`claude-in-chrome`). Zero setup, zero
-   credencial na sua mão, CSS/layout/dados 100% reais — prefira sempre que disponível.
+   navegador e te passa a URL. Vá para o **Passo 3a** (controle de navegador da plataforma).
+   Zero setup, zero credencial na sua mão, CSS/layout/dados 100% reais — prefira sempre que
+   disponível.
 2. **Credencial de teste reutilizável por você** (usuário/senha de ambiente de dev, sem ser
    sessão pessoal do usuário) — ele sobe a aplicação (ou já está de pé) e te dá comando + login.
    Vá para o **Passo 3b** (Playwright, você loga sozinho).
@@ -85,14 +87,24 @@ derrube.
 
 ---
 
-## Passo 3a — Sessão real via `claude-in-chrome` (preferido quando disponível)
+## Passo 3a — Sessão real pelo navegador conectado (preferido quando disponível)
 
-Invoque a skill `claude-in-chrome` antes de qualquer chamada `mcp__claude-in-chrome__*` (é a
-regra da própria skill). Abra a URL que o usuário passou numa aba nova dentro da sessão dele já
-logada, execute cada cenário clicando/preenchendo na tela real, e tire print de cada estado
-relevante com a própria ferramenta de screenshot da skill. Mesmas regras de ✅ do Passo 3b
-(cenário só é ✅ se o resultado esperado foi confirmado na tela, não só "carregou sem erro").
-Não fecha a aba nem a sessão do usuário ao final (Passo 5) — é o navegador dele, não seu.
+Escolha o mecanismo que a plataforma atual disponibiliza; não tente usar uma integração de outra
+plataforma:
+
+- **Claude:** invoque a skill `claude-in-chrome` antes de qualquer chamada
+  `mcp__claude-in-chrome__*`. Abra a URL em uma aba nova da sessão logada do usuário.
+- **ChatGPT/Codex no aplicativo desktop:** use o navegador conectado selecionando `@Chrome` (ou
+  outro navegador conectado) no chat. Se a tarefa puder usar um perfil isolado, `@Browser` também
+  serve; para a sessão já logada do usuário, prefira o navegador conectado. Só use acesso de
+  desenvolvedor/CDP para console e rede se ele estiver habilitado e houver aprovação explícita.
+- **Codex CLI, extensão de IDE, ou ambiente sem controle de navegador:** este caminho não está
+  disponível. Siga para o Passo 3b com credencial de teste ou para o 3c.
+
+Execute cada cenário clicando/preenchendo na tela real e capture um print de cada estado relevante
+com a ferramenta de navegador disponível. A regra de confirmação é a mesma do Passo 3b: só marque
+✅ quando o resultado esperado estiver confirmado na tela, não quando ela apenas carregar. Nunca
+feche a aba, o navegador ou a sessão do usuário ao final.
 
 ## Passo 3b — Playwright contra o app rodando
 
@@ -158,11 +170,14 @@ assuma que "tem Storybook" = "funciona"; pode estar quebrado ou incompleto, como
 
 - Um print por **estado relevante**, não um só por cenário inteiro: antes da ação, depois da ação,
   e sempre que o resultado esperado for verificado.
-- Cenário só é ✅ se foi **confirmado** o resultado esperado na tela (locator visível, texto
+- Cenário só é ✅ se foi **confirmado** o resultado esperado na tela (elemento visível, texto
   certo, contagem certa) — "a página carregou sem erro" não é confirmação de nada.
 - Resultado diferente do esperado, ou erro de console/página capturado → é bug: registre print +
   os erros coletados + a diferença exata entre esperado e obtido, e siga para o próximo
   cenário — um bug não interrompe o restante do QA.
+- Registre erros de console quando o mecanismo os expuser. Se o navegador conectado não tiver
+  acesso de desenvolvedor aprovado, escreva no relatório que essa coleta não estava disponível;
+  não alegue que não houve erros de console.
 
 ---
 
@@ -179,7 +194,7 @@ Leia `templates/relatorio_qa.md` e preencha. Caminho de saída:
 
 ## Passo 5 — Encerre
 
-- **3a (`claude-in-chrome`):** não feche a aba nem a sessão do usuário — é o navegador dele.
+- **3a (navegador conectado):** não feche a aba nem a sessão do usuário — é o navegador dele.
 - **3b (Playwright):** feche o browser (`browser.close()`). Se você mesmo subiu a aplicação no
   Passo 2, derrube o processo ao final — nunca mate um servidor que já estava rodando antes de
   você começar.
@@ -191,8 +206,9 @@ Leia `templates/relatorio_qa.md` e preencha. Caminho de saída:
 
 ## Regras
 
-- Nunca marque ✅ um cenário sem ter rodado de fato no Playwright — sem suposição escrita como se
-  fosse resultado real. Incerteza vira pergunta no Passo 1, não invenção no relatório.
+- Nunca marque ✅ um cenário sem tê-lo executado de fato em um dos caminhos dos Passos 3a, 3b ou
+  3c — sem suposição escrita como se fosse resultado real. Incerteza vira pergunta no Passo 1,
+  não invenção no relatório.
 - Nunca tire print de dado sensível real (senha, token, PII de produção) — use dado de teste.
 - Bug sem print e sem passos de reprodução não entra no relatório.
 - Sem bugs encontrados: escreva isso explicitamente na seção "Bugs Encontrados" — não omita a

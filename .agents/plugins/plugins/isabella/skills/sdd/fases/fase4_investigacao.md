@@ -1,5 +1,8 @@
 # Fase 4 — Investigação do Repositório
 
+**Portabilidade:** os dois agentes abaixo são `Agent`/`Task` no Claude Code e `spawn_agent` /
+`wait_agent` no Codex. Sem essa capacidade, execute as duas investigações em sequência.
+
 Lance **dois agentes Explore simultaneamente**. Aguarde ambos antes de prosseguir para a Fase 5.
 
 Antes de montar os prompts, releia `PROJECT_MAP.md § Arquitetura e estrutura real` e

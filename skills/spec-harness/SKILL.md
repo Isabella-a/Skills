@@ -50,8 +50,9 @@ o arquivo inteiro todas essas vezes é o desperdício de token mais fácil de ev
 
 Se `PROJECT_MAP.md` não tiver a Seção 0 (gerado antes desta convenção), leia o arquivo inteiro
 mesmo, e considere sugerir `project-map --refresh` para ganhar a leitura seletiva daqui em
-diante. Se `PROJECT_MAP.md` não existir, pergunte ao usuário se quer gerá-lo agora
-(`Skill(skill: "project-map")`) antes de continuar — melhora a precisão dos gates e da revisão.
+diante. Se `PROJECT_MAP.md` não existir, pergunte ao usuário se quer gerá-lo agora e invoque
+`project-map` quando estiver disponível (ou leia seu `SKILL.md` diretamente) antes de continuar —
+isso melhora a precisão dos gates e da revisão.
 Se recusar, prossiga só com `harness.config.json`.
 
 ### `docs.por_fase` — a mesma ideia para o resto de `docs/`

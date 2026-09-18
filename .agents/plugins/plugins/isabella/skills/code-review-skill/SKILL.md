@@ -22,6 +22,15 @@ Transform code reviews from gatekeeping to knowledge sharing through constructiv
 systematic analysis, and collaborative improvement — grounded in how *this* repository actually
 works, not in an assumed stack.
 
+## Runtime portability
+
+Use the capability available in the current runtime, not the literal Claude tool names in older
+instructions: invoke a skill when it is available; otherwise read its `SKILL.md` directly.
+For parallel review, Claude Code uses `Agent`/`Task`; Codex uses `spawn_agent` and
+`wait_agent`. If delegation is unavailable, run the applicable axes sequentially. Ask any
+necessary user question through the runtime's normal prompt/input mechanism, and use its available
+web tool for current external documentation.
+
 ## Ground the review in this repo first
 
 This skill makes no assumption about language, framework, or monorepo layout. It reads
@@ -38,8 +47,8 @@ cat PROJECT_MAP.md 2>/dev/null | head -20
 - **Doesn't exist:** tell the user — "Não encontrei `PROJECT_MAP.md` na raiz do repositório. Sem
   ele, o review vai usar só heurísticas genéricas (SOLID + OWASP + anti-padrões universais), sem
   saber a stack e as convenções reais deste repo. Posso rodar a skill `project-map` primeiro?" —
-  and wait for confirmation via `AskUserQuestion`.
-  - **Accepts:** `Skill(skill: "project-map")`, wait for it to finish, then re-read
+  and wait for confirmation.
+  - **Accepts:** invoke `project-map`, wait for it to finish, then re-read
     `PROJECT_MAP.md`.
   - **Declines:** proceed with only the stack-agnostic guides below (Architecture, Performance,
     Security, Universal Quality) and say so in the final report — findings that would normally

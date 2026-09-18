@@ -1,6 +1,6 @@
 ---
 name: sdd
-description: Quebra uma entrega em specs construíveis — documentos de Spec-Driven Design, um por unidade implementável e testável. Use quando o usuário quiser especificar antes de implementar, pedir "escreve um spec", "cria um SDD", "spec-driven design", "planejar essa feature/tarefa antes de codar", ou quiser fixar contratos e casos de teste antes do código. Aceita descrição livre OU referência a um ticket (chave tipo ABC-1234 ou link do rastreador). Na primeira execução num repositório, garante que PROJECT_MAP.md existe (skill 'project-map') e grava .claude/sdd/perfil.md com a unidade de entrega deste repositório. Produz .specs/sdd-<feature>/ com descricao_alto_nivel.md, implementacao.md, progresso.md e specs/NN-<nome>.md — consumidos depois pela skill 'spec-harness', que implementa cada spec com enforcement.
+description: Quebra uma entrega em specs construíveis — documentos de Spec-Driven Design, um por unidade implementável e testável. Use quando o usuário quiser especificar antes de implementar, pedir "escreve um spec", "cria um SDD", "spec-driven design", "planejar essa feature/tarefa antes de codar", ou quiser fixar contratos e casos de teste antes do código. Aceita descrição livre OU referência a um ticket (chave tipo ABC-1234 ou link do rastreador). Na primeira execução, garante PROJECT_MAP.md e grava o perfil SDD no caminho do runtime (`.claude/` ou `.agents/`). Produz .specs/sdd-<feature>/ consumida depois pelo spec-harness.
 argument-hint: <descrição da feature | chave/link do ticket | --setup>
 allowed-tools: [Read, Glob, Grep, Bash, Agent, AskUserQuestion, Write, Skill]
 ---
@@ -15,8 +15,8 @@ testes **antes** do código.
 O usuário invocou com: **$ARGUMENTS**
 
 `$ARGUMENTS` pode ser uma descrição livre, uma referência a um ticket (chave `ABC-1234`, só o
-número, ou um link do rastreador) ou `--setup` para refazer a unidade de entrega em
-`.claude/sdd/perfil.md` (para regenerar `PROJECT_MAP.md`, use `--refresh` na skill `project-map`).
+número, ou um link do rastreador) ou `--setup` para refazer o perfil SDD do runtime (para
+regenerar `PROJECT_MAP.md`, use `--refresh` na skill `project-map`).
 
 A saída é uma pasta `.specs/sdd-<feature-slug>/`, consumida depois pela skill `spec-harness`,
 que implementa cada spec num worktree isolado com enforcement de path — o SDD **não** escreve
@@ -31,7 +31,7 @@ antes de executar a fase. Os caminhos são relativos a este diretório de skill.
 
 | Fase | Arquivo | O que faz | Pré-requisito |
 |------|---------|-----------|---------------|
-| 0 | `fases/fase0_setup.md` | **Só na primeira vez no repositório** (ou com `--setup`): garante `PROJECT_MAP.md` (delegando à skill `project-map` se faltar) e grava `.claude/sdd/perfil.md` com a unidade de entrega | — |
+| 0 | `fases/fase0_setup.md` | **Só na primeira vez no repositório** (ou com `--setup`): garante `PROJECT_MAP.md` e grava o perfil SDD do runtime com a unidade de entrega | — |
 | 1 | `fases/fase1_ticket_grilling.md` | Busca o ticket (se houver referência) e roda uma sessão de grilling para afiar a ideia antes de qualquer pergunta estruturada | Fase 0 concluída |
 | 2 | `fases/fase2_alinhamento.md` | Coleta objetivo e regras de negócio; reaproveita o que a Fase 1 já resolveu e só pergunta o que ficou em aberto | Fase 1 concluída |
 | 3 | `fases/fase3_exploracao.md` | Explora o shape real de contratos, schemas e entidades envolvidos | Fase 2 concluída |
@@ -46,7 +46,7 @@ antes de executar a fase. Os caminhos são relativos a este diretório de skill.
 | Arquivo | Quando usar |
 |---------|-------------|
 | `PROJECT_MAP.md` (no repo alvo, gerado pela skill `project-map`) | Stack, arquitetura, estilos, testes, CI/deploy, segurança, convenções — leia **antes de tudo**; é o que ancora as fases numa stack real |
-| `.claude/sdd/perfil.md` (no repo alvo) | Só a unidade de entrega deste repositório — complementa `PROJECT_MAP.md` |
+| Perfil SDD no repo alvo (`.claude/sdd/perfil.md` no Claude; `.agents/sdd/perfil.md` no Codex) | Só a unidade de entrega deste repositório — complementa `PROJECT_MAP.md` |
 | `templates/perfil_repo.md` | Template do perfil (usado na Fase 0) |
 | `exploracao_contratos.md` | Prompt do agente de exploração (usado na Fase 3) |
 | `templates/descricao_alto_nivel.md` | Template para `descricao_alto_nivel.md` (Fase 6) |
@@ -66,9 +66,9 @@ antes de executar a fase. Os caminhos são relativos a este diretório de skill.
 Esta skill assume um agente de codificação com leitura de arquivo, busca, shell e edição — não é
 exclusiva do Claude Code. Duas convenções mudam de sintaxe conforme o runtime, sem mudar de efeito:
 
-- **Chamar outra skill** (ex.: `Skill(skill: "project-map")`, usado na Fase 0): no Claude Code,
-  use a tool `Skill`. Em outro runtime com skills no formato SKILL.md (ex.: Codex CLI), leia e
-  siga `.agents/skills/<nome>/SKILL.md` diretamente.
+- **Chamar outra skill** (ex.: `project-map`, usado na Fase 0): no Claude Code, use a tool
+  `Skill`. No Codex, invoque a skill descoberta pelo runtime; se ela não estiver disponível,
+  leia seu `SKILL.md` no diretório `.agents/skills/` ou no caminho fornecido pelo plugin.
 - **Delegar a um subagente** (`Agent(...)`, usado nas Fases 2-4): no Claude Code, use a tool
   `Agent`/`Task`. No Codex CLI, use `spawn_agent`/`wait_agent`. Sem essa primitiva, faça a
   exploração você mesmo, sequencialmente, em vez de pular a etapa.
@@ -81,7 +81,7 @@ exclusiva do Claude Code. Duas convenções mudam de sintaxe conforme o runtime,
 
 1. **Não pule fases.** Cada fase alimenta a seguinte — pular produz specs com contratos
    inventados ou escopo errado.
-2. **Leia `PROJECT_MAP.md` (arquitetura, stack, convenções) e `.claude/sdd/perfil.md` (unidade de
+2. **Leia `PROJECT_MAP.md` (arquitetura, stack, convenções) e o perfil SDD do runtime (unidade de
    entrega) antes da Fase 2.** É o que impede esta skill de propor uma arquitetura que não é a
    do repositório. Se algum dos dois não existir, rode a Fase 0 primeiro.
 3. **Fases 3 e 4 podem rodar em paralelo** (ambas dependem só da Fase 2).

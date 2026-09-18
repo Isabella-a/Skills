@@ -33,7 +33,7 @@ porque é Next.js" não vale — vira `⚠️ ABERTO:`. Um documento com chutes 
 documento: as skills que o consomem vão confiar cegamente no que está escrito.
 
 Não pergunte ao usuário o que os arquivos já respondem. Pergunte **só** o que genuinamente não dá
-para inferir, e cap em no máximo 4 perguntas por chamada de `AskUserQuestion` — este mapeamento
+para inferir, em no máximo 4 perguntas por rodada — este mapeamento
 deve custar minutos, não uma entrevista longa. O que sobrar sem resposta vira `⚠️ ABERTO:`, não
 motivo para travar o fluxo.
 
@@ -127,7 +127,7 @@ Para cada manifesto encontrado (todos, se for monorepo):
 
 ## Passo 5 — Pergunte só o que sobrou
 
-Uma chamada de `AskUserQuestion`, no máximo 4 perguntas, só sobre o que o Passo 4 não resolveu.
+Uma rodada de perguntas, no máximo 4 perguntas, só sobre o que o Passo 4 não resolveu.
 Mostre o que você já infere e peça confirmação em vez de perguntar do zero.
 
 ## Passo 6 — Escreva `PROJECT_MAP.md`

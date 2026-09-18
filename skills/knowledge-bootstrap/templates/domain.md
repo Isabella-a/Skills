@@ -23,11 +23,15 @@
 > apagadas após o merge, este é o registro definitivo. Regra sem origem clara vira ⚠️ ABERTO em
 > vez de inventada.
 
-- **<Nome curto da regra>**: <descrição objetiva>.
+- **RN-<DOMINIO>-<NNN> — <Nome curto da regra>**: <descrição objetiva>.
   - **Por quê:** <motivação de negócio, se conhecida — senão "⚠️ ABERTO: motivo não confirmado">
   - **Origem:** <spec extinta (nome), PR #, ADR (link para `docs/adr/NNNN-slug.md`), ou "grilling em <data>">
   - **Onde é aplicada:** <arquivo:função, só se ajudar a achar rápido — não é obrigatório>
-  - **Status:** vigente | superada por <regra/ADR> em <data>
+  - **Status:** vigente | superada por RN-<DOMINIO>-<NNN> em <data>
+  - **Substitui:** RN-<DOMINIO>-<NNN> | não se aplica
+
+> Regra superada permanece neste histórico: não apague nem reutilize seu ID. A regra que a
+> substitui deve apontar de volta para ela em **Substitui**.
 
 ## ADRs relevantes para este domínio
 

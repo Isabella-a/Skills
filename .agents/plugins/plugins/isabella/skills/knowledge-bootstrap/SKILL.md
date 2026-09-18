@@ -61,7 +61,7 @@ ls docs/knowledge/INDEX.md 2>/dev/null
 - **Não existe:** siga o processo abaixo.
 
 Também confira se `PROJECT_MAP.md` existe. Se não existir, ofereça rodar a skill `project-map`
-primeiro (via `AskUserQuestion`) — o bootstrap aproveita o que ela já levantou sobre stack e
+primeiro — o bootstrap aproveita o que ela já levantou sobre stack e
 estrutura em vez de escanear tudo de novo. Se o usuário recusar, faça o levantamento de estrutura
 você mesma (Passo 1) só o suficiente para identificar domínios — não precisa da profundidade de
 `project-map`.
@@ -110,8 +110,9 @@ confirmar vira pergunta para o grilling (Passo 4), não um chute.
 ## Passo 2 — Rascunho da árvore antes de perguntar
 
 Monte mentalmente (ou em rascunho local, não commitado) a lista de arquivos que vai gerar/editar:
-`docs/knowledge/domains/<dominio>.md` por domínio identificado, `CONTEXT.md`/`CONTEXT-MAP.md`
-novos ou a atualizar, `docs/adr/NNNN-slug.md` por ADR candidato. Isso define o escopo do grilling
+`docs/knowledge/domains/<dominio>.md` por domínio identificado (ou
+`domains/<dominio>/INDEX.md` + tópicos se o volume já justificar a divisão), `CONTEXT.md`/
+`CONTEXT-MAP.md` novos ou a atualizar, `docs/adr/NNNN-slug.md` por ADR candidato. Isso define o escopo do grilling
 do Passo 4 — pergunte sobre o que vai virar conteúdo, não sobre tudo que existe no repo.
 
 ## Passo 3 — O que já está confirmado não precisa de grilling
@@ -125,9 +126,10 @@ Grilling é só para o que ficou como lacuna real depois do Passo 1.
 Esta é a única etapa desta skill que interrompe o fluxo para uma conversa mais longa com o
 usuário — e só acontece no bootstrap, nunca no `knowledge-sync`.
 
-Chame `Skill(skill: "mattpocock-skills:grilling")` levando a lista de lacunas juntada nos passos
-anteriores, organizada por domínio, como o ponto de partida da árvore de decisão que o grilling
-vai trabalhar em rounds. Peça que foque em:
+Se a skill de grilling estiver disponível no runtime, invoque-a levando a lista de lacunas juntada
+nos passos anteriores, organizada por domínio, como o ponto de partida da árvore de decisão que o
+grilling vai trabalhar em rounds. No Codex sem essa dependência instalada, conduza as mesmas
+rodadas de perguntas diretamente, sem pular lacunas. Foque em:
 - **Porquês de negócio** sem origem confirmável (ex.: "por que o corte é no dia X do mês?").
 - **Decisões técnicas** que parecem ADR-worthy (bateram no critério de 3 testes) mas sem contexto
   registrado (alternativas descartadas, motivo do trade-off).
@@ -149,6 +151,9 @@ docs/knowledge/
   INDEX.md                    ← templates/index.md — único arquivo novo de índice
   domains/
     <dominio>.md              ← templates/domain.md, um por domínio identificado no Passo 1.2
+    <dominio>/                 ← só quando o domínio precisar ser dividido
+      INDEX.md                 ← templates/domain-index.md — roteador dos tópicos
+      regras-<tema>.md         ← regras agrupadas por jornada/assunto
 ```
 
 Vocabulário e decisões técnicas **não vivem em `docs/knowledge/`** — seguem exatamente a
@@ -169,13 +174,22 @@ convenção de `domain-modeling`:
 Regras para o que fica em `docs/knowledge/`:
 1. **Origem em cada afirmação não óbvia** — igual ao `project-map`: "regra X (origem: spec
    `02-aprovacao.md`, apagada em <data>)" ou "regra X (origem: grilling em <data>)".
-2. **Não copie CLAUDE.md/AGENTS.md/PROJECT_MAP.md/CONTEXT.md/ADRs** — referencie pelo caminho.
-3. **A tabela de domínios em `INDEX.md` é a parte mais importante do documento** — é o que evita
+2. **Regra substituída é histórico, não lixo.** Dê a cada regra um ID estável dentro do domínio
+   (por exemplo, `RN-COBRANCA-012`). Quando uma nova regra a substituir, mantenha a entrada
+   antiga, troque seu status para `superada por RN-... em <data>` e faça a regra nova referenciar
+   a anterior. Nunca reutilize o ID nem apague a regra só porque o comportamento atual mudou.
+3. **Não copie CLAUDE.md/AGENTS.md/PROJECT_MAP.md/CONTEXT.md/ADRs** — referencie pelo caminho.
+4. **A tabela de domínios em `INDEX.md` é a parte mais importante do documento** — é o que evita
    que qualquer consumidor (IA ou humano) precise abrir a árvore inteira ou adivinhar em qual das
    três convenções (regra, vocabulário, ADR) uma informação está. Revise a coluna de
    palavras-chave com atenção: inclua termos que alguém realmente grepraria (nomes de bug
    corrigido, nomes de campo, termos de negócio), não só o nome do domínio.
-4. **Arquivo sem conteúdo real vira "não se aplica" ou nem é criado** — não gere `domains/x.md`
+5. **Divida antes de perder navegabilidade.** Ao se aproximar de ~300 linhas de regras úteis,
+   substitua `domains/<dominio>.md` por `domains/<dominio>/INDEX.md` e arquivos por assunto ou
+   jornada (por exemplo, `regras-cadastro.md`, `regras-aprovacao.md`). O índice do domínio deve
+   listar o escopo e as palavras-chave de cada parte. Não divida por controller, tela ou detalhe
+   técnico; mova as regras sem duplicá-las e preserve seus IDs, status e origem.
+6. **Arquivo sem conteúdo real vira "não se aplica" ou nem é criado** — não gere `domains/x.md`
    vazio "para completar".
 
 ## Passo 6 — Versionar e relatar

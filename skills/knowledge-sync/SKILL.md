@@ -12,7 +12,7 @@ o gatilho que falta na skill `domain-modeling` (feita para uma sessão de design
 o momento em que uma spec está prestes a ser apagada).
 
 Diferença central para o `knowledge-bootstrap`: aqui não há sessão longa de grilling. No máximo
-4 perguntas pontuais via `AskUserQuestion`, só para o que é genuinamente ambíguo nesta entrega
+4 perguntas pontuais, só para o que é genuinamente ambíguo nesta entrega
 específica — o resto se resolve lendo a spec/diff.
 
 Esta skill escreve em três lugares diferentes, cada um já estabelecido, nunca inventa um quarto:
@@ -28,8 +28,9 @@ ls docs/knowledge/INDEX.md 2>/dev/null
 ```
 
 - **Não existe:** avise — "Não encontrei `docs/knowledge/INDEX.md`. Esta skill só atualiza uma
-  base que já existe. Posso rodar `knowledge-bootstrap` primeiro?" — `AskUserQuestion`. Aceita →
-  `Skill(skill: "knowledge-bootstrap")`, espera terminar, segue. Recusa → pare, não há onde
+  base que já existe. Posso rodar `knowledge-bootstrap` primeiro?". Aceita → invoque
+  `knowledge-bootstrap` se estiver disponível (ou leia suas instruções diretamente), espere
+  terminar e siga. Recusa → pare, não há onde
   gravar o incremento.
 - **Existe:** siga.
 
@@ -72,10 +73,11 @@ Classifique cada item extraído (mesma régua do `knowledge-bootstrap` Passo 1.3
 ## Passo 3 — Determine o(s) domínio(s) afetado(s)
 
 Confira a tabela de domínios em `docs/knowledge/INDEX.md`. Domínio já existe → edite os arquivos
-correspondentes (`domains/<dominio>.md` para a regra; `CONTEXT.md` do caminho já registrado para
-o termo — nunca crie um `CONTEXT.md` novo se a linha já aponta para um existente). Marque regra
-antiga como `superada por` se for o caso — nunca apague histórico de uma regra superada, troque o
-status.
+correspondentes (`domains/<dominio>.md`, ou o `domains/<dominio>/INDEX.md` que roteia seus
+subtemas, para a regra; `CONTEXT.md` do caminho já registrado para o termo — nunca crie um
+`CONTEXT.md` novo se a linha já aponta para um existente). Quando uma regra mudar, não apague a
+anterior: mantenha seu ID, marque-a `superada por RN-... em <data>` e faça a regra sucessora
+apontar para ela em `Substitui`.
 
 Domínio não existe ainda:
 1. Crie `docs/knowledge/domains/<novo>.md` a partir de
@@ -103,7 +105,7 @@ dúvida, releia o critério no `knowledge-bootstrap`, Passo 1.4.
 
 ## Passo 5 — Perguntas pontuais (máximo 4)
 
-Use `AskUserQuestion` só para o que ficou genuinamente ambíguo depois de ler spec + diff + PR —
+Pergunte ao usuário só o que ficou genuinamente ambíguo depois de ler spec + diff + PR —
 por exemplo, "essa regra é permanente ou só vale até `<condição>` mudar?" ou "essa mudança
 substitui a regra X documentada em `domains/y.md`, ou as duas coexistem?". Não reabra uma sessão
 de grilling completa — se a lista de perguntas passar de 4, isso é sinal de que a entrega deveria
@@ -117,8 +119,11 @@ Depois de gravar os arquivos, releia `docs/knowledge/INDEX.md` e confirme que:
   que valha grep).
 - a seção "ADRs de sistema" só lista o que é citado com frequência — não vira um espelho de tudo
   que existe em `docs/adr/`.
-- nenhum `domains/<dominio>.md` passou de ~300 linhas sem que você tenha avaliado dividir (ver
-  critério no `knowledge-bootstrap`, Passo 5, regra 3) — se passou, divida agora, não adie.
+- nenhum `domains/<dominio>.md` passou de ~300 linhas sem que você tenha avaliado dividir. Se a
+  nova entrega cruzar esse limite, divida agora: crie `domains/<dominio>/INDEX.md` e arquivos por
+  assunto ou jornada, mova as regras sem duplicá-las e preserve IDs, status e origem. Atualize a
+  linha do domínio em `docs/knowledge/INDEX.md` para apontar ao novo índice. Não divida por tela,
+  endpoint ou componente.
 
 ## Passo 7 — Se a fonte era uma spec prestes a ser apagada
 

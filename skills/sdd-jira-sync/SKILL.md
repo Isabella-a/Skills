@@ -26,10 +26,10 @@ informada pelo usuário (ou é a única candidata óbvia no diretório `.specs/`
 ### 1. Resolver a pasta de specs e a história de destino
 
 - Se o usuário não indicar a feature, rode `ls .specs/` e, se houver mais de uma pasta
-  `sdd-*`, pergunte qual usar (`AskUserQuestion`).
+  `sdd-*`, pergunte qual usar.
 - **A chave da história é sempre obrigatória.** Se o pedido não trouxer a chave (ex.: o
   usuário só disser "cria as tarefas da spec no Jira" ou "sobe as specs pro Jira"), **pare e
-  pergunte qual é a história de destino** (`AskUserQuestion`) antes de ler specs ou tocar no
+  pergunte qual é a história de destino** antes de ler specs ou tocar no
   Jira — mesmo que só exista uma pasta `.specs/sdd-*` candidata e mesmo que uma spec cite uma
   história em sua documentação. Nunca infira a chave a partir de commits, branch atual ou
   menções soltas dentro dos arquivos de spec.
@@ -56,7 +56,7 @@ confirmação antes de ações com blast radius compartilhado):
   reescrita com escopo diferente).
 - Monte uma tabela: `subtarefa existente → spec` para reaproveitar, `spec → nova subtarefa`
   para o que falta.
-- Use `AskUserQuestion` apresentando esse mapeamento antes de aplicar qualquer edição/criação.
+- Apresente esse mapeamento ao usuário antes de aplicar qualquer edição/criação.
   Sempre ofereça a opção de ajustar mapeamentos ambíguos manualmente.
 
 ### 4. Descobrir o accountId de quem está usando a skill

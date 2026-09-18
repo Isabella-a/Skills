@@ -32,8 +32,8 @@ operação**:
 gh auth status
 ```
 
-Se não estiver autenticado, peça ao usuário para rodar `gh auth login` (no Claude Code, sugira
-`! gh auth login` para rodar interativamente na sessão). Scopes necessários: `repo` (e
+Se não estiver autenticado, peça ao usuário para rodar `gh auth login` no terminal interativo.
+Scopes necessários: `repo` (e
 `workflow` para mexer em Actions). Não exponha o token.
 
 ## Configuração — detecção de owner/repo
@@ -299,7 +299,7 @@ minor ↑ = **minor**; só patch ↑ = **patch**). Identifique o **app afetado**
 
 #### 5.2 Investigar a doc de cada dependência (antes de mexer no código)
 
-Para cada pacote — priorizando **minor e major** — use `WebSearch`/`WebFetch` para achar release
+Para cada pacote — priorizando **minor e major** — use a ferramenta de navegação disponível para achar release
 notes / CHANGELOG / migration guide entre `de` e `para`. Registre **breaking changes,
 deprecations, passos de migração e pontos de atenção**. Esse resumo alimenta o body do PR batch
 (5.5) e, em major, o comentário no PR isolado. Patch geralmente dispensa — mas registre se houver
@@ -544,7 +544,7 @@ Usuário: "Compila os PRs do dependabot num pacote e roda os e2e"
      --json number,title,headRefName,author \
      --jq '.[] | select(.author.login=="app/dependabot")'
    → classificar cada um: pacote, de→para, semver (patch/minor/major), app afetado
-2. doc de cada dep (minor/major): WebSearch/WebFetch → CHANGELOG/migration
+2. doc de cada dep (minor/major): navegação disponível → CHANGELOG/migration
    → registrar breaking changes / pontos de atenção
 3. branch batch (só patch/minor):
      git fetch origin develop -q
