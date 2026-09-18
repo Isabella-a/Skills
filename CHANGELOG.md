@@ -7,6 +7,28 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 
 ## [Não lançado]
 
+- Adiciona as skills `knowledge-bootstrap` e `knowledge-sync`: capturam regra de negócio antes que
+  specs SDD sejam apagadas após o merge, sem duplicar a convenção de vocabulário/ADR que a skill
+  `domain-modeling` (`mattpocock-skills`) já mantém (`CONTEXT.md`/`CONTEXT-MAP.md`, `docs/adr/`,
+  critério de 3 testes pra saber se uma decisão vale um ADR) e que outras skills do toolkit
+  (`tdd`, `triage`) já leem como hábito. O par cobre só o que essa convenção deixa de fora de
+  propósito: (1) regra de negócio — `CONTEXT.md` é explicitamente "não spec, não repositório de
+  decisão de implementação", só vocabulário; (2) um índice único navegável por palavra-chave —
+  `CONTEXT-MAP.md` lista contextos mas não é um roteador pensado pra IA nunca precisar abrir tudo;
+  (3) o gatilho de captura no momento em que uma spec está prestes a sumir — `domain-modeling` é
+  para sessão de design ao vivo, não para fim de entrega. `knowledge-bootstrap` roda uma vez por
+  repositório: varre código, `CLAUDE.md`/`AGENTS.md`, `PROJECT_MAP.md`, `CONTEXT.md`/`docs/adr/`
+  existentes, ADRs em formato antigo (listados como histórico, não migrados) e specs ainda vivas,
+  identifica domínios/bounded-contexts e usa `mattpocock-skills:grilling` para fechar lacunas de
+  "porquê" que não dão pra inferir por evidência. Gera `docs/knowledge/INDEX.md` como
+  glossário/roteador (tabela de domínios com palavras-chave para grep, apontando pra regra de
+  negócio, `CONTEXT.md` e `docs/adr/` de cada um) mais um arquivo de regras por domínio
+  (`docs/knowledge/domains/*.md`) — nada além disso, vocabulário e ADR seguem no lugar de sempre.
+  `knowledge-sync` roda a cada spec implementada (antes dela ser apagada) ou branch/PR mergeada,
+  cruzando spec com o diff real, sem sessão de grilling (no máximo 4 perguntas pontuais via
+  `AskUserQuestion`), gravando cada extração na convenção certa e mantendo o índice coerente.
+  Convivem com `PROJECT_MAP.md` por ora; a ideia declarada é a base absorver o papel dele com o
+  tempo.
 - Adiciona a skill `qa-tester`: gera documentação de QA manual (checklist + prints) para uma
   funcionalidade ou uma ou mais specs SDD combinadas, executando os cenários (caminho feliz +
   edge cases) e reportando bugs (esperado vs obtido, com print e erros de console). Acessa a
