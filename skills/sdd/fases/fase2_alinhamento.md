@@ -1,12 +1,15 @@
 # Fase 2 — Alinhamento de Negócio
 
+**Portabilidade:** no Codex, use `spawn_agent`/`wait_agent` onde os exemplos abaixo usam
+`Agent`, e use o perfil em `.agents/sdd/perfil.md` em vez de `.claude/sdd/perfil.md`.
+
 Esta fase garante que você entende o objetivo real antes de explorar código. Não pule para
 exploração técnica sem clareza de negócio — uma spec construída sobre premissa errada é inútil.
 
 **Pré-requisitos:**
 
 - **Fase 0 concluída** — leia `PROJECT_MAP.md` (tipo de projeto, camadas, integrações externas
-  recorrentes) e `.claude/sdd/perfil.md` (o que é uma unidade de entrega) antes de perguntar
+  recorrentes) e o perfil SDD do runtime (o que é uma unidade de entrega) antes de perguntar
   qualquer coisa. Sem isso você vai perguntar ao usuário o que o repositório já responde.
 - **Fase 1 concluída** — releia a sessão de grilling e mapeie o que ela já resolveu. Só pergunte
   o que ficou em aberto; se a entrevista cobriu tudo, apresente o resumo e peça confirmação (ver
@@ -14,7 +17,7 @@ exploração técnica sem clareza de negócio — uma spec construída sobre pre
 
 ---
 
-## 2.1 — Perguntas obrigatórias (use `AskUserQuestion` só para o que ainda está em aberto)
+## 2.1 — Perguntas obrigatórias (pergunte só o que ainda estiver em aberto)
 
 Cheque cada item contra o que a Fase 1 já resolveu e o que `PROJECT_MAP.md`/`perfil.md` já
 declaram. Para o que sobrar, pergunte em uma única chamada com múltiplos campos:
@@ -59,7 +62,7 @@ repositório. Aplique de lá:
 
 ### Eixos da entrega — assuma o caminho completo
 
-Se `.claude/sdd/perfil.md` indicar que o projeto tem mais de um eixo por onde uma feature costuma
+Se o perfil SDD do runtime indicar que o projeto tem mais de um eixo por onde uma feature costuma
 passar (por exemplo contrato + consumo, serviço + job, API + tela), **assuma que a entrega passa
 por todos eles** em vez de perguntar "é só de um lado?" como escolha aberta. Informe essa suposição ao
 resumir as respostas de 2.1 e diga a ordem prevista (quem produz o contrato vem antes de quem

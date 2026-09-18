@@ -3,7 +3,7 @@
 **Data:** <hoje>
 **Testado por:** <agente/sessão>
 **Origem:** <caminho da spec `.specs/sdd-<feature>/specs/NN-*.md` | descrição livre recebida>
-**Ambiente testado:** <URL local> · Chromium (Playwright)
+**Ambiente testado:** <URL local> · <navegador conectado via Claude/Codex | Chromium (Playwright) | harness>
 
 ---
 
@@ -32,7 +32,7 @@ Acesse: `<URL>`
 
 ### Cenário 1 — <nome, ex.: caminho feliz>
 
-| # | Ação | Resultado esperado | Confirmado no Playwright |
+| # | Ação | Resultado esperado | Confirmado na tela |
 |---|------|---------------------|---------------------------|
 | 1 | <ação> | <o que deve acontecer> | ✅ / ❌ |
 | 2 | <ação> | <o que deve acontecer> | ✅ / ❌ |
@@ -42,7 +42,7 @@ Acesse: `<URL>`
 
 ### Cenário 2 — <edge case>
 
-| # | Ação | Resultado esperado | Confirmado no Playwright |
+| # | Ação | Resultado esperado | Confirmado na tela |
 |---|------|---------------------|---------------------------|
 | 1 | <ação> | <o que deve acontecer> | ✅ / ❌ |
 

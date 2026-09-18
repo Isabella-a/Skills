@@ -110,12 +110,9 @@ All operations will use your configured project key and cloud ID automatically.
   `https://mcp.atlassian.com/v1/mcp`. The legacy **HTTP+SSE** endpoint
   `https://mcp.atlassian.com/v1/sse` is deprecated and stops working on **30 June 2026**
   ([official notice](https://community.atlassian.com/forums/Atlassian-Remote-MCP-Server/HTTP-SSE-Deprecation-Notice/ba-p/3205484)).
-- If you still see the SSE warning, migrate the server and re-auth via `/mcp`:
-
-  ```bash
-  claude mcp remove atlassian
-  claude mcp add --transport http atlassian https://mcp.atlassian.com/v1/mcp
-  ```
+- If you still see the SSE warning, replace the Atlassian connection in the current agent's
+  MCP/plugin settings with `https://mcp.atlassian.com/v1/mcp`, then authenticate again. In
+  Codex, use its MCP or plugin connection settings; in Claude Code, use its MCP settings.
 
 **Wrong project being used:**
 
@@ -132,6 +129,6 @@ All operations will use your configured project key and cloud ID automatically.
 
 This skill works with:
 
-- Claude Code (config via `jira-config.md` in the skill folder)
+- Claude Code and Codex (both use `jira-config.md` in the skill folder)
 - Any workspace with accessible configuration files (`CLAUDE.md`, `AGENTS.md`, docs)
 - Interactive mode (prompts for configuration)

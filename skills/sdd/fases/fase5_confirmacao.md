@@ -1,8 +1,8 @@
 # Fase 5 — Confirmação de Escopo Técnico
 
 Com as respostas de negócio (Fase 2), os relatórios de módulo/tela de referência (Fase 2.2, se
-aplicável), o shape do contrato (Fase 3) e a investigação do repositório (Fase 4) em mãos, use
-`AskUserQuestion` para confirmar apenas o que ainda estiver em aberto.
+aplicável), o shape do contrato (Fase 3) e a investigação do repositório (Fase 4) em mãos,
+pergunte ao usuário para confirmar apenas o que ainda estiver em aberto.
 
 ---
 

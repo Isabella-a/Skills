@@ -19,6 +19,13 @@ Esta skill não invoca nenhuma outra skill sozinha. Se o usuário quiser o fluxo
 mecânico em tempo real (hook de path, packet, evidence.json), isso só roda se ele digitar
 `/spec-harness` explicitamente — não é acionado por esta.
 
+## Runtime: Claude Code e Codex
+
+Faça a mesma orquestração usando a primitiva de subagente do runtime atual. No Claude Code, uma
+onda usa `Agent`/`Task` e a correção retorna por `SendMessage`. No Codex, use `spawn_agent` para
+cada spec independente, `wait_agent` para coletar o resultado e `followup_task` para devolver uma
+correção ao mesmo agente. Sem subagentes, execute as specs em sequência; não pule os gates.
+
 ## Pré-condição
 
 `.specs/sdd-<feature>/` já existe com `specs/NN-*.md` e `implementacao.md` (skill `sdd`).
@@ -37,10 +44,10 @@ Antes de disparar, crie o isolamento (comandos, não subagente — não custa to
 git worktree add /tmp/spec-orch/<feature>-<NN> -b spec/<feature>/<NN>
 ~~~
 
-Uma chamada `Agent` por spec da onda, `subagent_type: general-purpose`, **com `name:
-impl-<feature>-<NN>`** (precisa ser endereçável depois via `SendMessage` se uma correção for
-necessária — passo 4), todas na mesma mensagem (paralelo de verdade). Não use `fork` — a sessão
-precisa ser enxuta, não herdar a conversa do orquestrador.
+Uma chamada de subagente por spec da onda, com nome `impl-<feature>-<NN>` para poder receber uma
+correção no passo 4, todas disparadas em paralelo. No Codex, use `spawn_agent` com contexto
+enxuto (`fork_turns: "none"`); no Claude Code, use `Agent`/`Task`. Não herde a conversa do
+orquestrador.
 
 Prompt autocontido por subagente (ele não vê esta conversa):
 
@@ -102,8 +109,9 @@ item → passo 4. Passou em tudo → passo 5 (merge).
 ## 4. Uma correção, de volta pro mesmo subagente
 
 Se a reconfirmação (passo 3) falhar por qualquer motivo, ou o subagente já tinha reportado
-`blocked`: `SendMessage` pro agente **pelo nome** (`impl-<feature>-<NN>`, não um `Agent` novo —
-isso preserva a sessão e evita pagar o contexto frio de novo) com o erro exato (saída do teste, a
+`blocked`: envie o erro exato ao agente **pelo nome** (`impl-<feature>-<NN>`, não crie um agente
+novo — no Codex, `followup_task`; no Claude, `SendMessage`). Isso preserva a sessão e evita pagar
+o contexto frio de novo. Inclua a saída do teste, a
 lista de arquivos fora do escopo, a linha do lint, o símbolo do contrato que faltou). Uma
 tentativa só. Se ainda falhar depois disso: `blocked` de verdade — não mergeia, mantém o worktree
 pra inspeção, reporta ao usuário, e pula (não dispara) qualquer spec de onda seguinte que dependa

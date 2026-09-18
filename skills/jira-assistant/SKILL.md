@@ -52,15 +52,11 @@ This skill talks to Jira through the **Atlassian Rovo MCP server**, which must u
 
 The legacy **HTTP+SSE** endpoint `https://mcp.atlassian.com/v1/sse` is **deprecated and stops
 working on 30 June 2026** ([official notice](https://community.atlassian.com/forums/Atlassian-Remote-MCP-Server/HTTP-SSE-Deprecation-Notice/ba-p/3205484)).
-If MCP responses still show the SSE deprecation warning, migrate the server:
-
-```bash
-claude mcp remove atlassian
-claude mcp add --transport http atlassian https://mcp.atlassian.com/v1/mcp
-```
-
-Then re-authenticate via `/mcp` → `atlassian`. Existing access/admin controls carry over to
-the new endpoint.
+If MCP responses still show the SSE deprecation warning, update the Atlassian connection in the
+current agent's MCP/plugin settings to the Streamable HTTP endpoint above, then re-authenticate.
+Do not prescribe a `claude mcp` command in Codex: Codex connections are configured through its
+plugin/MCP settings. If no Atlassian tool is available after configuration, stop and tell the user
+that the connection is required rather than attempting Jira through an unrelated tool.
 
 ## Workflow
 

@@ -1,5 +1,8 @@
 # Fase 3 — Descoberta Exploratória de Contratos e Schemas
 
+**Portabilidade:** os blocos `Agent(...)` abaixo significam um subagente de exploração. No Codex,
+use `spawn_agent` e `wait_agent`; se não houver subagentes, faça a exploração sequencialmente.
+
 Esta fase existe para que os dados de teste (fixtures/mocks de DTOs, entidades, respostas de
 API) reflitam a realidade do sistema. Sem ela, os payloads inventados nos testes divergem do
 schema real (colunas de migration, DTOs, resposta de API externa) e os testes aprovam código

@@ -1,5 +1,9 @@
 # Fase 1 — Ticket (opcional) + Grilling
 
+**Portabilidade:** nomes como `Skill(...)` e `AskUserQuestion` em exemplos antigos significam
+invocar a capacidade equivalente do runtime ou perguntar diretamente ao usuário. No Codex, use a
+skill/integração descoberta e, se ela não existir, faça a etapa manualmente.
+
 Esta fase roda antes da Fase 2. Ela tem dois passos: (1) buscar o ticket no rastreador de issues,
 se o usuário passou uma referência, e (2) entrevistar o usuário até a ideia estar afiada o
 suficiente para virar spec.
@@ -21,7 +25,7 @@ chave do ticket) e verifique se já existe pasta para ela:
 find .specs -maxdepth 1 -iname "sdd-*<fragmento-do-slug>*" -type d
 ```
 
-Se encontrar, **não sobrescreva silenciosamente**. Use `AskUserQuestion` para o usuário escolher:
+Se encontrar, **não sobrescreva silenciosamente**. Pergunte ao usuário qual alternativa prefere:
 
 - **Retomar/atualizar** a pasta existente (ex.: feature ainda com specs `🔴`/`🟡` em
   `progresso.md`) — nesse caso, leia `descricao_alto_nivel.md` e `progresso.md` antes do
@@ -49,11 +53,9 @@ Delegue à ferramenta que o ambiente já tiver, nesta ordem de preferência:
 2. **MCP do rastreador**, se conectado.
 3. **CLI**, se disponível (`gh issue view <n>` para GitHub Issues).
 
-```
-Skill(skill: "<skill do rastreador>", args: "buscar os detalhes completos da issue <CHAVE>
-(título, descrição, critérios de aceite, comentários relevantes) para usar como insumo de uma
-sessão de grilling antes de escrever uma spec — não altere o ticket, só retorne os dados")
-```
+Use um pedido equivalente a: “busque os detalhes completos da issue `<CHAVE>` (título,
+descrição, critérios de aceite e comentários relevantes) para servir de insumo a uma sessão de
+grilling; não altere o ticket.”
 
 Se a busca falhar (issue inexistente, sem permissão, nenhuma ferramenta disponível), informe e
 pergunte se o usuário quer corrigir a referência ou seguir sem o ticket, descrevendo em texto
@@ -72,9 +74,7 @@ como semente:
 - o texto original de `$ARGUMENTS` (sempre — o usuário costuma dar na invocação um contexto que
   não está no ticket).
 
-```
-Skill(skill: "grill-me", args: "<resumo do ticket, se houver> + <$ARGUMENTS>")
-```
+Passe à skill de grilling o resumo do ticket, se houver, junto de `$ARGUMENTS`.
 
 A skill de grilling conduz a entrevista sozinha — não reimplemente o mecanismo, só dispare e
 espere o resultado.

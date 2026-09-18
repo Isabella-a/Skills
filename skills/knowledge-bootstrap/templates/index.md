@@ -21,9 +21,10 @@
 4. Precisa do porquê de uma decisão técnica? Vá direto pro `docs/adr/` (ou
    `<contexto>/docs/adr/`) indicado na linha do domínio — não abra os ADRs todos, os nomes de
    arquivo (`NNNN-slug.md`) já dizem do que se trata.
-5. Um `domains/<dominio>.md` ficou grande (> ~300 linhas)? Sinal pra próxima `knowledge-sync`
-   dividir (`domains/<dominio>/regras-cadastro.md`, `domains/<dominio>/regras-aprovacao.md` etc.)
-   e atualizar a tabela abaixo.
+5. Um `domains/<dominio>.md` ficou grande (> ~300 linhas)? Sinal para dividi-lo em
+   `domains/<dominio>/INDEX.md` + arquivos por jornada/regra (por exemplo,
+   `regras-cadastro.md`, `regras-aprovacao.md`) e atualizar a tabela abaixo. Leia primeiro esse
+   índice do domínio, não todos os arquivos da pasta.
 
 ## Quando sua tarefa envolve...
 
