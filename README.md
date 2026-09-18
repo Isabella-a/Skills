@@ -147,6 +147,8 @@ repositório em vez de inventar um.
 | [`react-best-practices`](skills/react-best-practices) | Boas práticas de performance para React/Next.js (Vercel Engineering) — data fetching, bundle, renderização. | Ativa ao escrever, revisar ou refatorar componentes React/Next.js. |
 | [`sdd`](skills/sdd) | Quebra uma entrega em specs construíveis — documentos de Spec-Driven Design, um por unidade testável, antes de qualquer código. | `/sdd <descrição da feature>`, `/sdd ABC-1234` (busca o ticket antes) ou peça "escreve um spec para X". |
 | [`spec-harness`](skills/spec-harness) | Implementa cada spec gerada pela `sdd` em RED→GREEN→VERIFY, num git worktree isolado, com enforcement de path. | Automática, depois que a pasta `.specs/sdd-<feature>/` já existir. |
+| [`spec-orchestrator`](skills/spec-orchestrator) | Alternativa lean ao `spec-harness`: implementa todas as specs de uma feature direto da spec Markdown (RED→GREEN num subagente só por spec, paralelo entre ondas independentes), sem packet/evidence.json — menos token por spec, sem enforcement mecânico em tempo real. | Peça "implementa a feature inteira" priorizando custo baixo. Pré-condição: `.specs/sdd-<feature>/` já existir (skill `sdd`). |
+| [`qa-tester`](skills/qa-tester) | Gera documentação de QA manual (checklist + prints) para uma funcionalidade ou spec(s) SDD — abre a tela real (`claude-in-chrome`, Playwright ou o harness de componente do repo, nessa ordem de preferência), executa os cenários e reporta bugs (esperado vs obtido, print e erros de console). Não substitui teste automatizado. | Peça "gera um checklist de teste manual", "testa essa spec na tela" ou passe o caminho de uma spec SDD. |
 | [`sdd-jira-sync`](skills/sdd-jira-sync) | Sincroniza as specs de uma feature `sdd` (`.specs/sdd-<feature>/specs/*.md`) como Subtarefas de uma história já existente no Jira — reaproveita subtarefas que já batem com o escopo e cria as que faltarem. | Peça "sobe as specs do sdd-<feature> pro Jira, vinculadas na história <CHAVE>" ou "sincroniza as specs com a <CHAVE>". Depende da skill `jira-assistant` para configuração. |
 | [`github-assistant`](skills/github-assistant) | Gerencia GitHub via `gh` CLI — Pull Requests, Issues, branches e commits. Detecta automaticamente o owner/repo do workspace (`github-config.md` ou git remote). | Peça para abrir/revisar/mergear um PR, criar uma issue, listar PRs abertos, ver checks de CI ou comparar branches. |
 | [`jira-assistant`](skills/jira-assistant) | Gerencia issues do Jira via Atlassian MCP — busca, cria, atualiza, transiciona status, comentários e KTLOs. Detecta a configuração do workspace automaticamente (`jira-config.md`). | Peça para criar/buscar/atualizar uma issue, mover para outro status, comentar ou "cadastrar um KTLO". |
@@ -234,6 +236,12 @@ Além dessas, uma opcional e não gerenciada por este plugin: skill/MCP de rastr
 No Codex, Ponytail é instalado como plugin separado (`ponytail@ponytail`) e Matt Pocock é
 instalado como conjunto de skills com `npx skills@latest add mattpocock/skills`; os comandos estão
 na seção **Codex CLI**. O manifesto Codex não suporta declarar essas instalações automaticamente.
+
+**`spec-orchestrator`** é um motor de implementação alternativo ao `spec-harness`, sobre a mesma
+saída da `sdd` (`.specs/sdd-<feature>/`): mais barato em token (sem packet/evidence.json, sem
+`PROJECT_MAP.md` inteiro por fase), sem o enforcement mecânico de path em tempo real que o
+`spec-harness` tem via hook. Nenhuma das duas skills invoca a outra — a escolha é do usuário, feita
+pelo comando digitado (`/spec-harness` vs. pedir a implementação lean).
 
 ## Atualizando
 
