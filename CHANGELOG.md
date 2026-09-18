@@ -7,6 +7,8 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 
 ## [Não lançado]
 
+## [2.2.0] - 2026-09-18
+
 - Adiciona as skills `knowledge-bootstrap` e `knowledge-sync`: capturam regra de negócio antes que
   specs SDD sejam apagadas após o merge, sem duplicar a convenção de vocabulário/ADR que a skill
   `domain-modeling` (`mattpocock-skills`) já mantém (`CONTEXT.md`/`CONTEXT-MAP.md`, `docs/adr/`,
