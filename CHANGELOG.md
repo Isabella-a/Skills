@@ -7,6 +7,23 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 
 ## [Não lançado]
 
+## [2.3.0] - 2026-09-18
+
+- Torna todas as skills portáteis entre Claude Code e Codex: instruções param de fixar o nome
+  literal de uma tool exclusiva do Claude Code (`AskUserQuestion`, `Skill(skill: "...")`,
+  `WebSearch`/`WebFetch`) quando o efeito é genérico (perguntar ao usuário, invocar outra skill,
+  buscar documentação), preservando o nome real da tool onde ainda ajuda um runtime específico
+  (`Agent`/`Task` no Claude Code, `spawn_agent`/`wait_agent`/`followup_task` no Codex) — mesma
+  convenção já usada em `sdd/fases/fase1_ticket_grilling.md`, agora estendida a todas as skills.
+  `github-assistant`/`jira-assistant` trocam comandos hardcoded de CLI (`claude mcp add ...`) por
+  "configure via MCP/plugin settings do runtime atual". `sdd` passa a ter caminho de perfil por
+  runtime (`.claude/sdd/perfil.md` no Claude, `.agents/sdd/perfil.md` no Codex) e cada fase ganha
+  uma nota de portabilidade. `spec-orchestrator` ganha a seção "Runtime: Claude Code e Codex"
+  mapeando a primitiva de subagente em cada um. `knowledge-bootstrap`/`knowledge-sync` ganham o
+  template `domain-index.md` que faltava, ID estável de regra (`RN-<DOMINIO>-<NNN>`) com histórico
+  de substituição, e a divisão de domínio grande em `INDEX.md` + tópicos. `qa-tester` generaliza o
+  acesso à tela real para qualquer navegador conectado ao runtime, não só `claude-in-chrome`.
+
 ## [2.2.0] - 2026-09-18
 
 - Adiciona as skills `knowledge-bootstrap` e `knowledge-sync`: capturam regra de negócio antes que
