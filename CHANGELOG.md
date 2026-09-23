@@ -7,6 +7,22 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 
 ## [Não lançado]
 
+## [2.4.0] - 2026-09-23
+
+- `qa-tester`: controle de navegador via extensão (Claude in Chrome / navegador conectado) vira o
+  caminho padrão, com verificação ativa em vez de suposição. Novo Passo 2.0 carrega as ferramentas
+  `mcp__claude-in-chrome__*`, confirma conexão real com `list_connected_browsers`/
+  `tabs_context_mcp` antes de perguntar qual via usar, e orienta passo a passo a instalação/conexão
+  da extensão quando ela não está disponível (sem inventar URL — busca por nome na Chrome Web
+  Store). O Passo 3a ganha a sequência operacional validada numa execução completa: ligar
+  console/rede antes de navegar (os dois só capturam a partir da primeira chamada), uma aba só por
+  sessão de QA, `browser_batch` para agrupar ações, acesso a repositório em outro filesystem
+  (`\\wsl$\...`/`/mnt/c/...` quando o app roda em WSL e a sessão em Windows, ou vice-versa),
+  permissão explícita antes de cliques que submetem/persistem dado, e — a mudança mais importante —
+  confirmação de persistência real (reload da tela ou `fetch` direto ao endpoint, ignorando cache
+  do client) em vez de confiar só no feedback de sucesso da tela. Essa última regra nasceu de um
+  bug real encontrado assim: toast de sucesso ao salvar, mas o dado não persistia no backend.
+
 ## [2.3.0] - 2026-09-18
 
 - Torna todas as skills portáteis entre Claude Code e Codex: instruções param de fixar o nome
