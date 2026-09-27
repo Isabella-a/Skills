@@ -7,6 +7,21 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 
 ## [Não lançado]
 
+## [2.5.0] - 2026-09-27
+
+- `sdd`: a Fase 0 pergunta uma vez qual é a `Ferramenta de implementação` (`spec-harness`,
+  `spec-orchestrator` ou manual) e grava no perfil; as fases seguintes leem o campo em vez de
+  perguntar por spec. Com `spec-harness`, entrega full-stack continua como par
+  `NN-backend.md` + `NN+1-frontend.md`; com outra ferramenta, vira uma spec só do tamanho de uma
+  jornada/tela inteira. Templates (`spec`, `implementacao`, `progresso`, `perfil_repo`) e a regra
+  de qualidade deixam de assumir `spec-harness`.
+- `sdd-jira-sync`: grava `.specs/sdd-<feature>/jira-map.json` (spec → card) ao final.
+- `spec-orchestrator`: se `jira-map.json` existir, move os cards da onda para "In Progress" antes
+  de implementar — transição descoberta por projeto, sem regredir status, falha nunca bloqueia.
+- `qa-tester`: relatório começa direto no checklist (sem cabeçalho de metadados), cita os
+  `BUG-XX` fechados num reteste e sinaliza bug que contradiz uma `RN-*` documentada, sugerindo
+  `knowledge-sync`.
+
 ## [2.4.0] - 2026-09-23
 
 - `qa-tester`: controle de navegador via extensão (Claude in Chrome / navegador conectado) vira o
