@@ -1,30 +1,5 @@
 # QA Manual — <Nome da Funcionalidade>
 
-**Data:** <hoje>
-**Testado por:** <agente/sessão>
-**Origem:** <caminho da spec `.specs/sdd-<feature>/specs/NN-*.md` | descrição livre recebida>
-**Ambiente testado:** <URL local> · <navegador conectado via Claude/Codex | Chromium (Playwright) | harness>
-
----
-
-## O que foi testado
-
-<1-3 frases — o que esta funcionalidade faz, do ponto de vista de quem vai clicar>
-
----
-
-## Como rodar localmente (para o colega repetir)
-
-~~~bash
-<comando de start, de PROJECT_MAP.md § Ambiente local e execução>
-~~~
-
-Acesse: `<URL>`
-
-<Credenciais ou dado de teste necessário, se houver — nunca credencial real>
-
----
-
 ## Checklist de Teste Manual
 
 > Print ao lado de cada passo é o resultado observado na execução automatizada — referência, não
@@ -57,6 +32,9 @@ Acesse: `<URL>`
 | BUG-01 | <cenário, passo> | Alta/Média/Baixa | <o que deveria acontecer> | <o que aconteceu> | ![](./screenshots/bug-01.png) |
 
 > Sem bugs encontrados nos cenários testados? Escreva isso — não omita a seção.
+> Bug cujo comportamento observado contradiz uma regra em `docs/knowledge/domains/*.md`: cite a
+> RN divergente na coluna "Esperado" (ex.: "diverge de RN-CONTA-009") e sugira ao usuário rodar
+> `knowledge-sync` depois — não edite a doc de conhecimento a partir daqui.
 
 ---
 

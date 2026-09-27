@@ -1,7 +1,7 @@
 ---
 name: spec-orchestrator
 description: Implementa todas as specs de uma feature SDD (.specs/sdd-<feature>/) direto — um subagente lean por spec lê a spec.md, escreve o teste (RED) e o código (GREEN) na mesma sessão, isolado por git worktree, em paralelo quando specs não dependem entre si e em sequência quando dependem. Antes do merge rodam checagens mecânicas baratas (escopo, lint, contrato, cobertura de requisito) via Bash/grep, sem custar token de LLM, e uma correção é pedida de volta ao mesmo subagente antes de desistir. Sem packet YAML, sem evidence.json, sem gates automáticos, sem PROJECT_MAP.md inteiro por fase — o objetivo é gastar pouco token por spec. Use quando o usuário quiser "implementar a feature inteira" priorizando custo baixo.
-allowed-tools: [Read, Glob, Grep, Bash, Edit, Agent, SendMessage]
+allowed-tools: [Read, Glob, Grep, Bash, Edit, Agent, SendMessage, ToolSearch, mcp__claude_ai_Atlassian_Rovo__getJiraIssue, mcp__claude_ai_Atlassian_Rovo__getTransitionsForJiraIssue, mcp__claude_ai_Atlassian_Rovo__transitionJiraIssue]
 ---
 
 # Spec Orchestrator (lean)
@@ -38,7 +38,25 @@ Specs da mesma onda sem dependência mútua rodam em paralelo.
 
 ## 2. Um subagente por spec da onda, disparados juntos
 
-Antes de disparar, crie o isolamento (comandos, não subagente — não custa token):
+**Antes de criar o isolamento:** se `.specs/sdd-<feature>/jira-map.json` existir (gerado pela
+skill `sdd-jira-sync`), transicione o card de cada spec desta onda para "In Progress" — na
+própria thread principal, não dentro do subagente (evita dar acesso ao Jira pra cada subagente
+isolado, e evita chamada duplicada se a onda tiver mais de uma spec). As tools do Atlassian MCP
+aparecem como *deferred*; carregue com `ToolSearch("select:getJiraIssue,getTransitionsForJiraIssue,transitionJiraIssue")`
+antes da primeira chamada.
+
+- Pegue a chave em `specs["<NN>-*.md"]` do manifesto. Sem entrada pra essa spec, pule em
+  silêncio — nem toda spec precisa ter card (ex.: pasta `.specs/` nunca sincronizada com
+  `sdd-jira-sync`).
+- Descubra a transição certa via `getTransitionsForJiraIssue` (nunca hardcode o `id` ou o nome
+  do status — varia por projeto) e procure a que leva a um status contendo "in progress"/"em
+  andamento" (o board é PT-BR, mas o nome exato do status pode variar).
+- Se a issue já estiver em "In Progress" (ou além, ex. "Code Review"/"Done"), não regrida o
+  status — pule sem transicionar. `getJiraIssue` com `fields: ["status"]` antes de decidir.
+- Falha ao transicionar (permissão, workflow não permite a partir do status atual): avise no
+  relatório final da onda e siga com a implementação — isso nunca bloqueia o código.
+
+Depois disso, crie o isolamento (comandos, não subagente — não custa token):
 
 ~~~bash
 git worktree add /tmp/spec-orch/<feature>-<NN> -b spec/<feature>/<NN>
