@@ -295,12 +295,22 @@ assuma que "tem Storybook" = "funciona"; pode estar quebrado ou incompleto, como
 
 ## Passo 4 — Gere o relatório
 
-Leia `templates/relatorio_qa.md` e preencha. Caminho de saída:
+Leia `templates/relatorio_qa.md` e preencha, direto a partir do Checklist de Teste Manual — sem
+cabeçalho de metadados. Caminho de saída:
 
 - **Veio de uma spec SDD:** `.specs/sdd-<feature>/qa/<NN>-relatorio.md`, prints em
   `.specs/sdd-<feature>/qa/screenshots/`.
 - **Descrição livre:** `.specs/qa-<slug>/relatorio.md`, prints em
   `.specs/qa-<slug>/screenshots/`.
+
+Se já existir `qa/<NN-1>-relatorio.md` para a mesma feature (reteste após correção de bug), cite
+na seção "Bugs Encontrados" quais `BUG-XX` do relatório anterior foram fechados nesta rodada.
+
+Se algum cenário revelar comportamento que contradiz uma regra já documentada em
+`docs/knowledge/domains/*.md` (não um bug qualquer — uma regra de negócio com ID `RN-*`
+registrada), cite essa RN na linha do bug e, ao final, avise o usuário que a documentação de
+conhecimento pode estar desatualizada e sugira rodar `knowledge-sync` — não edite a doc você
+mesmo a partir desta skill.
 
 ---
 

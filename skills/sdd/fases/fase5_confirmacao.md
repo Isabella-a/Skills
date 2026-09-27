@@ -20,15 +20,20 @@ pergunte ao usuário para confirmar apenas o que ainda estiver em aberto.
    usuário antes de propor código novo — cada reuso é uma spec que não precisa existir.
 5. **Lista de specs — apresente, não pergunte em aberto:** derive você mesmo a divisão em
    `specs/`, sem pedir ao usuário para adivinhar. Priorize menos specs, maiores. Aplique a regra
-   de granularidade (mesma usada na Fase 6, `fases/fase6_geracao.md#regra-de-granularidade-das-specs`):
+   de granularidade (mesma usada na Fase 6, `fases/fase6_geracao.md#regra-de-granularidade-das-specs`),
+   conforme a `Ferramenta de implementação` do perfil (decidida uma vez na Fase 0 — não pergunte
+   de novo aqui):
    - testável de forma independente, sem depender de outra spec para rodar seus testes (exceto
      dependência explicitamente declarada);
-   - entrega com frontend → um par acoplado (spec de backend + spec de frontend com `Depende
-     de` a primeira), numeradas em sequência e tratadas como uma entrega vertical só — a
-     funcionalidade fica pequena, mas de ponta a ponta e testável na tela ao final do par;
+   - perfil = `spec-harness` → entrega com frontend vira um par acoplado (spec de backend + spec
+     de frontend com `Depende de` a primeira), numeradas em sequência e tratadas como uma entrega
+     vertical só;
+   - perfil = outra ferramenta → entrega com frontend vira **uma spec só**, cobrindo backend e
+     frontend juntos, do tamanho de uma jornada/tela inteira — quebre em outra spec apenas ao
+     mudar de tela/fluxo, nunca por camada nem por RF isolado;
    - entrega sem frontend → agrupe por entidade/módulo (ex.: todo o CRUD de uma entidade numa
-     spec só); quebre em specs (ou pares) separados apenas ao cruzar entidade/módulo ou área de
-     feature diferente, nunca pelo tamanho isolado de um caso de uso.
+     spec só); quebre em specs separadas apenas ao cruzar entidade/módulo ou área de feature
+     diferente, nunca pelo tamanho isolado de um caso de uso.
 
    Construa a lista cruzando: os contratos reais da Fase 3 (cada entidade/DTO/endpoint novo
    costuma virar uma spec), os módulos/telas de referência da Fase 2.2 (o que já existe não

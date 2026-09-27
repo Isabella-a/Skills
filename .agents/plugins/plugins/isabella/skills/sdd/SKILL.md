@@ -1,6 +1,6 @@
 ---
 name: sdd
-description: Quebra uma entrega em specs construíveis — documentos de Spec-Driven Design, um por unidade implementável e testável. Use quando o usuário quiser especificar antes de implementar, pedir "escreve um spec", "cria um SDD", "spec-driven design", "planejar essa feature/tarefa antes de codar", ou quiser fixar contratos e casos de teste antes do código. Aceita descrição livre OU referência a um ticket (chave tipo ABC-1234 ou link do rastreador). Na primeira execução, garante PROJECT_MAP.md e grava o perfil SDD no caminho do runtime (`.claude/` ou `.agents/`). Produz .specs/sdd-<feature>/ consumida depois pelo spec-harness.
+description: Quebra uma entrega em specs construíveis — documentos de Spec-Driven Design, um por unidade implementável e testável. Use quando o usuário quiser especificar antes de implementar, pedir "escreve um spec", "cria um SDD", "spec-driven design", "planejar essa feature/tarefa antes de codar", ou quiser fixar contratos e casos de teste antes do código. Aceita descrição livre OU referência a um ticket (chave tipo ABC-1234 ou link do rastreador). Na primeira execução, garante PROJECT_MAP.md e grava o perfil SDD no caminho do runtime (`.claude/` ou `.agents/`), incluindo a ferramenta de implementação que o repositório usa. Produz .specs/sdd-<feature>/, consumida depois pelo `spec-harness`, `spec-orchestrator` ou implementação manual, conforme o perfil.
 argument-hint: <descrição da feature | chave/link do ticket | --setup>
 allowed-tools: [Read, Glob, Grep, Bash, Agent, AskUserQuestion, Write, Skill]
 ---
@@ -18,9 +18,10 @@ O usuário invocou com: **$ARGUMENTS**
 número, ou um link do rastreador) ou `--setup` para refazer o perfil SDD do runtime (para
 regenerar `PROJECT_MAP.md`, use `--refresh` na skill `project-map`).
 
-A saída é uma pasta `.specs/sdd-<feature-slug>/`, consumida depois pela skill `spec-harness`,
-que implementa cada spec num worktree isolado com enforcement de path — o SDD **não** escreve
-código de produção.
+A saída é uma pasta `.specs/sdd-<feature-slug>/` — o SDD **não** escreve código de produção. Quem
+implementa depois é definido pela `Ferramenta de implementação` do perfil (Fase 0): a skill
+`spec-harness` (worktree isolado, enforcement de path), a `spec-orchestrator` (subagente lean por
+spec), ou implementação manual seguindo a spec.
 
 ---
 
@@ -98,5 +99,6 @@ exclusiva do Claude Code. Duas convenções mudam de sintaxe conforme o runtime,
    quem decide isso é a sessão de grilling.
 9. **Não duplique lógica de outra skill.** Busca de issue e entrevista são delegadas às skills
    correspondentes quando existirem; a Fase 1 só orquestra as chamadas.
-10. **Depois de gerar a pasta**, avise que a implementação acontece via `spec-harness`
-    (`scaffold-packet` + `autorun`), não escrevendo código direto a partir do SDD.
+10. **Depois de gerar a pasta**, avise qual ferramenta implementa a partir dali (a que o perfil
+    declara — `spec-harness` via `scaffold-packet` + `autorun`, `spec-orchestrator`, ou manual),
+    não escrevendo código direto a partir do SDD.

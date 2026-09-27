@@ -93,11 +93,30 @@ nome PT-BR configurado), `parent: <CHAVE da história>`, mesmo formato de `summa
 do passo 6. Depois de criada, edite-a para setar Story Points e assignee (a criação não aceita
 esses campos diretamente neste MCP — sempre um `editJiraIssue` de acompanhamento).
 
-### 8. Relatar o resultado
+### 8. Gravar o manifesto spec → issue
+
+Escreva (ou sobrescreva) `.specs/sdd-<feature>/jira-map.json`:
+
+```json
+{
+  "story": "<CHAVE da história>",
+  "specs": {
+    "01-nome-da-spec.md": "<CHAVE-N>",
+    "02-outra-spec.md": "<CHAVE-M>"
+  }
+}
+```
+
+Esse arquivo é a única fonte de verdade que outras automações (`spec-orchestrator`, hook de
+abertura de PR) usam para saber qual card do Jira corresponde a qual spec — sem ele não têm como
+mover nenhum card depois. Inclua **todas** as specs da pasta, reaproveitadas ou recém-criadas.
+
+### 9. Relatar o resultado
 
 Resuma em uma tabela curta: quais subtarefas foram editadas (chave → spec), quais foram criadas
-(chave → spec), todas com link (`webUrl` retornado pelas chamadas). Não é necessário relatório
-extenso — uma tabela e um parágrafo bastam.
+(chave → spec), todas com link (`webUrl` retornado pelas chamadas). Mencione que
+`jira-map.json` foi gravado/atualizado. Não é necessário relatório extenso — uma tabela e um
+parágrafo bastam.
 
 ## Regras
 

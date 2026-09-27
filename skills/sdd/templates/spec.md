@@ -3,9 +3,11 @@
 **Status:** 🟡 Rascunho
 **Autor:** <git config user.name>
 **Data:** <hoje>
-**Escopo:** <escopo do `spec-harness` que esta spec toca — uma spec toca UM escopo>
+**Escopo:** <camadas que esta spec toca — perfil `spec-harness`: UM escopo do harness só; perfil
+outra ferramenta: pode ser backend+frontend juntos, se for a mesma jornada/tela>
 **Depende de:** [spec anterior ou "Nenhuma"]
-**Entrega vertical:** [nome curto da entrega, igual nas duas specs do par backend+frontend | "Autônoma" se não fizer parte de um par]
+**Entrega vertical:** [nome curto da jornada/tela | "Autônoma" se não depender de outra spec —
+perfil `spec-harness`: igual nas duas specs do par backend+frontend]
 
 ---
 
@@ -23,15 +25,15 @@
 
 ## Arquivos permitidos
 
-Qualquer arquivo fora desta lista é expansão de escopo: pare e alinhe antes de commitar.
-Esta seção é lida pelo `spec-harness` (`scaffold-packet`) — mantenha os dois blocos abaixo, com
-um bullet por arquivo.
+Qualquer arquivo fora desta lista é expansão de escopo: pare e alinhe antes de commitar. Se o
+repositório usa `spec-harness`, esta seção também é lida por ele (`scaffold-packet`) — mantenha
+os dois blocos abaixo, com um bullet por arquivo.
 
-**Produção (fase GREEN)**
+**Produção**
 
 - `<caminho/do/arquivo>` — <o que muda ali> *(marque `(novo)` quando o arquivo ainda não existe)*
 
-**Testes (fase RED)**
+**Testes**
 
 - `<caminho/do/teste>` *(novo)*
 
@@ -61,8 +63,9 @@ um bullet por arquivo.
 
 > Descreva o QUÊ acontece, não o COMO implementar.
 > Escreva como se um desenvolvedor ou agente fosse implementar sem poder perguntar nada.
-> Se não tiver certeza de algo, marque com ⚠️ ABERTO: e registre nas Open Questions — o
-> `spec-harness` recusa spec com marcador aberto pendente.
+> Se não tiver certeza de algo, marque com ⚠️ ABERTO: e registre nas Open Questions — spec com
+> marcador aberto pendente não está pronta para implementação (o `spec-harness`, quando usado,
+> recusa mecanicamente).
 
 ### Fluxo Principal (Happy Path)
 
@@ -78,9 +81,10 @@ um bullet por arquivo.
 
 ### Verificação Manual na Tela
 
-> Só nesta seção se esta spec for a metade "frontend" de uma entrega vertical (ver
-> `Entrega vertical` no cabeçalho). É o critério de "pronto" que fecha o par: passos curtos que
-> uma pessoa executa no navegador para ver a funcionalidade funcionando de ponta a ponta.
+> Só nesta seção se esta spec envolve frontend. É o critério de "pronto" da jornada: passos
+> curtos que uma pessoa executa no navegador para ver a funcionalidade funcionando de ponta a
+> ponta (perfil `spec-harness`: fecha o par backend+frontend; perfil outra ferramenta: fecha a
+> spec única).
 
 1. [Ação no navegador — ex.: abrir a tela X, clicar em Y]
 2. [O que deve aparecer/mudar na tela]
@@ -130,8 +134,8 @@ código de saída de CLI, mensagem na fila de dead-letter>
 
 ## Casos de Teste Mínimos
 
-> Cada linha aqui é um teste que precisa existir **antes** do código (fase RED do
-> `spec-harness`). Os níveis obrigatórios vêm de `PROJECT_MAP.md § Testes`.
+> Cada linha aqui é um teste que precisa existir **antes** do código (TDD — fase RED, se o
+> repositório usa `spec-harness`). Os níveis obrigatórios vêm de `PROJECT_MAP.md § Testes`.
 
 | # | Alvo | Cenário | Fixture de entrada | Resultado esperado | Arquivo de teste |
 |---|------|---------|---------------------|---------------------|-------------------|
@@ -164,7 +168,7 @@ código de saída de CLI, mensagem na fila de dead-letter>
 
 - [ ] 🟡 Antes de commitar: `git diff --stat` conferido contra **Arquivos permitidos**. Arquivo
       fora da lista → parar e alinhar, não expandir o escopo em silêncio.
-- [ ] 🟡 Testes escritos antes do código (fase RED)
+- [ ] 🟡 Testes escritos antes do código (TDD)
 - [ ] 🟡 <padrão de contrato/tipagem do repositório>
 - [ ] 🟡 <padrão de validação de entrada do repositório>
 - [ ] 🟡 Fail-first: nenhum erro de negócio engolido por captura silenciosa

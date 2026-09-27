@@ -55,15 +55,24 @@ confirmar:
   Um caso de uso de domínio com seu contrato? Uma tela com seu hook de dados? Uma task de um DAG?
 - Peça um exemplo real e pequeno do repositório ("isto é uma spec") e um exemplo do que é grande
   demais ("isto vira duas ou mais specs").
-- Se `PROJECT_MAP.md` já indicar full-stack (frontend + backend na mesma entrega), confirme a
-  ordem típica entre os eixos (ex.: contrato → persistência → exposição HTTP → consumo na tela).
 
-Se o repositório já tiver `.claude/spec_harness/harness.config.json` inicializado, dê uma olhada
-rápida nos `scopes` declarados — eles confirmam as fronteiras que uma spec não pode cruzar:
+**Ferramenta de implementação (pergunte uma vez só, aqui — as fases seguintes leem o perfil e
+nunca voltam a perguntar isso por spec):**
 
 ```bash
 cat .claude/spec_harness/harness.config.json 2>/dev/null
+cat .claude/settings.json ~/.claude/settings.json 2>/dev/null | grep -A2 '"spec-harness"'
 ```
+
+- **`harness.config.json` existe e a skill `spec-harness` não está desativada** (não aparece
+  como `"off"` em `skillOverrides`): confirme com o usuário que as specs vão continuar via
+  `spec-harness` — entrega full-stack é um par `NN-backend.md` + `NN+1-frontend.md`.
+- **Não existe, ou `spec-harness` está desativada, ou o usuário confirma que não vai usá-la**:
+  entrega full-stack vira **uma spec só**, cobrindo backend e frontend juntos, do tamanho de uma
+  jornada/tela inteira. Não pergunte "isso é backend ou frontend?" a cada spec — a camada que
+  cada trecho toca já sai de `PROJECT_MAP.md § Arquitetura e estrutura real`.
+
+Grave a escolha no perfil (`Ferramenta de implementação`, `templates/perfil_repo.md`).
 
 ## 0.3 — Escreva o perfil
 
