@@ -73,7 +73,7 @@ são compatíveis com Codex. As integrações externas devem ser instaladas uma 
 que cada projeto oferece:
 
 ```powershell
-# Ponytail: plugin nativo do Codex
+# Ponytail (https://github.com/DietrichGebert/ponytail): plugin nativo do Codex
 codex plugin marketplace add DietrichGebert/ponytail
 codex plugin add ponytail@ponytail
 
@@ -112,9 +112,16 @@ Dentro do Claude Code, em qualquer repositório:
 
 Não é preciso `git clone` nem rodar nenhum script — o Claude Code busca e mantém o plugin
 atualizado sozinho. O manifesto `.claude-plugin/plugin.json` declara nativamente as duas
-dependências: `mattpocock-skills@claude-plugins-official` e `ponytail@ponytail`. As duas primeiras
-marketplaces precisam existir antes do `/plugin install`; sem elas, o plugin fica com status
-"failed to load" até que sejam adicionadas.
+dependências: `mattpocock-skills@claude-plugins-official` e `ponytail@ponytail`. As duas
+marketplaces das dependências (`anthropics/claude-plugins-official` e
+[`DietrichGebert/ponytail`](https://github.com/DietrichGebert/ponytail)) precisam existir antes do
+`/plugin install`; sem elas, o plugin fica com status "failed to load" e o Claude responde que não
+encontrou o Ponytail. Se isso acontecer, adicione a marketplace e instale o plugin manualmente:
+
+```
+/plugin marketplace add DietrichGebert/ponytail
+/plugin install ponytail@ponytail
+```
 
 #### Verificando a instalação
 
