@@ -29,3 +29,7 @@ Este workspace usa a seguinte configuração de GitHub:
 - Conferir: `gh auth status`.
 - Dentro do diretório do repo, o `gh` infere `owner/repo`; use `-R <owner>/<repo>`
   para operar de fora do diretório.
+
+> **Template.** Valores de exemplo — não commite dados reais de empresa neste repositório público.
+> Sem config, a skill usa `gh repo view` / git remote do workspace. Convenções reais (prefixo de
+> ticket, base de PR) ficam no `CLAUDE.md`/`AGENTS.md` do repositório interno.

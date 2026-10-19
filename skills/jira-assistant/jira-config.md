@@ -17,3 +17,7 @@ Os nomes dos tipos de issue do PROJ estão em português — use-os ao criar iss
 - **Bug**
 - **Tarefa** (default)
 - **Subtarefa** (requer o campo `parent` com a issue pai)
+
+> **Template.** Valores de exemplo — não commite dados reais de empresa neste repositório público.
+> Coloque a configuração real no `CLAUDE.md`/`AGENTS.md` do repositório interno (a skill também
+> lê de lá). Sem config, a skill descobre `cloudId` e projetos via MCP (`getAccessibleAtlassianResources`).

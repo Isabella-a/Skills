@@ -123,7 +123,7 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 
 ## [2.0.1] - 2026-09-15
 
-- `code-review-skill`: deixa de ser específica do stack do One Portal e passa a se ancorar no
+- `code-review-skill`: deixa de ser específica do stack de um projeto específico e passa a se ancorar no
   `PROJECT_MAP.md` do repositório onde roda — se ele não existir, avisa o usuário e pede permissão
   antes de gerá-lo via skill `project-map`. Guias de stack (NestJS, React) agora carregam
   condicionalmente, só quando o `PROJECT_MAP.md` indica aquela stack.
@@ -140,7 +140,7 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
 - `code-review-skill`: o eixo Spec conformance passa a exigir cobertura completa dos requisitos da
   spec (nada pode ficar de fora — isso bloqueia); implementação além do pedido continua sinalizada,
   mas só como aviso informativo de "fora do escopo", não como defeito.
-- `code-review-skill`: `scripts/pr-analyzer.ts` perde os hardcodes de path do One Portal
+- `code-review-skill`: `scripts/pr-analyzer.ts` perde os hardcodes de path de um projeto específico
   (`apps/backend`/`apps/frontend`) e a detecção de migration vira um padrão de nome de segmento de
   path (`*migrations?`) em vez de string fixa.
 
@@ -219,7 +219,7 @@ instalou o plugin sobre uma versão nova — antes de rodar `/plugin marketplace
     `scaffold-packet`/`init-repo` em qualquer repositório com outra convenção de diretório.
 - Remove a skill `drizzle-migration` (referência específica de projeto, não generalizável).
 - `sdd`: renumera as fases para começar em 0 (`0`-`6`, antes `-2`..`4`).
-- Adiciona 6 skills que faltavam em relação ao <repo> (`sdd-jira-sync`,
+- Adiciona 6 skills que faltavam em relação a um monorepo interno (`sdd-jira-sync`,
   `github-assistant`, `jira-assistant`, `aws-debugger`, `code-review-skill`, entre outras).
 
 ## [1.1.0] - 2026-09-08

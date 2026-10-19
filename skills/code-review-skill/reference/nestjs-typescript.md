@@ -65,7 +65,7 @@ await this.unitOfWork.exec(async (uow) => {
 **Review points:**
 - Any service method that writes to 2+ repositories in sequence — is it wrapped in `UnitOfWork.exec()`?
 - Is `setContext()` called on every repository used inside the transaction, not just the first one?
-- Are secondary effects (emails, HubSpot sync, notifications) *outside* the transaction, published via pg-boss instead (see below)?
+- Are secondary effects (emails, CRM sync, notifications) *outside* the transaction, published via pg-boss instead (see below)?
 
 ---
 
@@ -88,7 +88,7 @@ await this.pubSub.publish(EventEnum.UserCreated, { userId: user.id });
 ```
 
 **Review points:**
-- Are emails, HubSpot syncs, notifications, or other non-core side effects invoked directly inside a service/transaction instead of published as an event?
+- Are emails, CRM syncs, notifications, or other non-core side effects invoked directly inside a service/transaction instead of published as an event?
 - Does the consumer extend `BaseConsumer` and get registered in `onModuleInit`?
 - Is the event name added to `EventEnum` rather than a raw string?
 
@@ -223,7 +223,7 @@ class OrderService {
 
 - [ ] **Either pattern**: service failures use `Either`, not mixed throw/Either in the same layer?
 - [ ] **Unit of Work**: multi-repository writes wrapped in `UnitOfWork.exec()`, with `setContext()` on every repo used?
-- [ ] **Pub/Sub**: secondary effects (email, HubSpot, notifications) published via pg-boss, not inline in the transaction?
+- [ ] **Pub/Sub**: secondary effects (email, CRM, notifications) published via pg-boss, not inline in the transaction?
 - [ ] **Module structure**: new use case in its own `contexts/<use-case>/` folder?
 - [ ] **DTO validation**: every controller input validated, no `@Body() body: any`?
 - [ ] **N+1**: no per-iteration queries; list endpoints paginated?

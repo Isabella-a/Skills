@@ -68,7 +68,7 @@ Quick-reference bug patterns applicable to any stack. For detailed examples and 
 
 - [ ] `Either` error branch not handled in a controller
 - [ ] Multi-repository write not wrapped in `UnitOfWork.exec()`
-- [ ] Secondary effect (email, HubSpot, notification) running inline instead of published via pg-boss
+- [ ] Secondary effect (email, CRM, notification) running inline instead of published via pg-boss
 - [ ] Controller input without a validated DTO (`@Body() body: any`)
 - [ ] Manual instantiation (`new SomeRepositoryImpl()`) bypassing constructor injection
 - [ ] Circular module dependency without `forwardRef()`

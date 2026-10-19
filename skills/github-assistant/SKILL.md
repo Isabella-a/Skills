@@ -38,7 +38,9 @@ Scopes necessários: `repo` (e
 
 ## Configuração — detecção de owner/repo
 
-1. **Config do skill primeiro:** procure `github-config.md` (ao lado deste `SKILL.md`).
+1. **Config primeiro:** procure no `CLAUDE.md`/`AGENTS.md` do repo e depois em `github-config.md`
+   (ao lado deste `SKILL.md`) — owner/repo, base de PR e **prefixo de ticket**. Valores entre `<...>`
+   (`<owner>`, `<repo>`) ou `PROJ` são placeholder do template: trate como "sem config".
 2. **Se não houver:** detecte pelo git remote do workspace:
    ```bash
    gh repo view --json nameWithOwner,defaultBranchRef -q '.nameWithOwner + " (" + .defaultBranchRef.name + ")"'
@@ -96,7 +98,7 @@ Commits** (isso vale para commits, não para o título do PR).
 
 ```bash
 branch=$(git rev-parse --abbrev-ref HEAD)
-echo "$branch" | grep -oiE 'PROJ-[0-9]+'        # extrai o tag da branch (ex.: feat/PROJ-XXXX-...)
+echo "$branch" | grep -oiE '[A-Z][A-Z0-9]+-[0-9]+'   # extrai o tag da branch (ex.: feat/PROJ-XXXX-...); prefixo vem da config
 ```
 
 - Com o tag em mãos, busque a **descrição do card no Jira** via **`jira-assistant`**

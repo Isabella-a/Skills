@@ -25,25 +25,30 @@ Use this skill when the user asks to:
 
 **Project Detection Strategy (Automatic):**
 
-1. **Check skill config first**: Look for Jira configuration in `jira-config.md` (next to this `SKILL.md`)
-2. **If not found**: Use MCP search tools to discover available projects
-3. **If still unclear**: Ask user to specify project key
-4. **Use detected values** for all Jira operations in this conversation
+1. **Check workspace config first**: Look for Jira configuration (project key, cloud ID, URL, KTLO ids) in the
+   repository's `CLAUDE.md` / `AGENTS.md`, then in `jira-config.md` (next to this `SKILL.md`)
+2. **Placeholders count as "not found"**: a value like `<cloudId>`, `PROJ` or `your-site.atlassian.net`
+   is template data, never a real setting — do not send it to the MCP
+3. **If not found**: Use MCP search tools to discover available projects
+4. **If still unclear**: Ask user to specify project key
+5. **Use detected values** for all Jira operations in this conversation
 
 ### Configuration Detection Workflow
 
 When you activate this skill:
 
-1. Check if the skill folder has `jira-config.md` with Jira configuration
-2. If found, extract and use: Project Key, Cloud ID, URL, Board URL, and issue type names
-3. If not found:
-   - Use `search("jira projects I have access to")` via MCP
+1. Check `CLAUDE.md` / `AGENTS.md` of the repo, then the skill folder's `jira-config.md`, for Jira configuration
+2. If found with real values (not `<...>`/`PROJ`/`your-site` placeholders), extract and use: Project Key,
+   Cloud ID, URL, Board URL, and issue type names
+3. If not found or only placeholders:
+   - Call `getAccessibleAtlassianResources` to get the `cloudId`
+   - Use `getVisibleJiraProjects` / `search("jira projects I have access to")` via MCP
    - Present discovered projects to user
    - Ask: "Which Jira project should I use? (e.g., KAN, PROJ, DEV)"
 4. Store the configuration for this conversation and proceed with operations
 
 **Note for skill users:** To configure this skill for your workspace, create `jira-config.md`
-in the skill folder with your project details (see `jira-config.md` for the current project).
+in the skill folder with your project details (see `jira-config.md` for the expected format; keep real values out of public repos).
 
 ### MCP transport
 
